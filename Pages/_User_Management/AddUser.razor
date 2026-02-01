@@ -1,0 +1,425 @@
+﻿@page "/users/add"
+@using KNQASelfService.Interfaces.UserManagement
+@using KNQASelfService.Models;
+@using KNQASelfService.Interfaces;
+@using System.ComponentModel.DataAnnotations;
+@inject IUnitOfWork unitOfWork
+@inject IEmailService emailService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <!-- Page Header -->
+    <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                           Style="color: white;"
+                           OnClick="@(() => Navigation.NavigateTo("/users"))" />
+            <div>
+                <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Style="margin-right: 12px; vertical-align: middle;" />
+                    Add New User
+                </MudText>
+                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                    Create a new user account
+                </MudText>
+            </div>
+        </MudStack>
+    </MudPaper>
+
+    <!-- Form -->
+    <MudPaper Elevation="3" Class="pa-6" Style="border-radius: 12px; border-top: 4px solid #D4A853;">
+        @if (loadingRoles)
+        {
+            <div style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+                <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+            </div>
+        }
+        else
+        {
+            <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <MudGrid>
+                    <!-- Personal Information Section -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600; margin-bottom: 16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Style="vertical-align: middle; margin-right: 8px;" />
+                            Personal Information
+                        </MudText>
+                        <MudDivider Style="margin-bottom: 16px;" />
+                    </MudItem>
+                    
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.UserNameId"
+                                      Label="User Name"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      For="@(() => model.UserNameId)"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Person"
+                                      AdornmentColor="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.FullName"
+                                      Label="Full Name"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      For="@(() => model.FullName)"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Person"
+                                      AdornmentColor="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.Email"
+                                      Label="Email Address"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      InputType="InputType.Email"
+                                      For="@(() => model.Email)"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Email"
+                                      AdornmentColor="Color.Primary" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.PhoneNumber"
+                                      Label="Phone Number"
+                                      Variant="Variant.Outlined"
+                                      For="@(() => model.PhoneNumber)"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Phone"
+                                      AdornmentColor="Color.Primary" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.Location"
+                                      Label="Location"
+                                      Variant="Variant.Outlined"
+                                      For="@(() => model.Location)"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.LocationOn"
+                                      AdornmentColor="Color.Primary" />
+                    </MudItem>
+
+                    <!-- Account Information Section -->
+                    <MudItem xs="12" Class="mt-4">
+                        <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600; margin-bottom: 16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Security" Style="vertical-align: middle; margin-right: 8px;" />
+                            Account Information
+                        </MudText>
+                        <MudDivider Style="margin-bottom: 16px;" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudSelect @bind-Value="model.RoleId"
+                                   Label="Role"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   For="@(() => model.RoleId)"
+                                   Adornment="Adornment.Start"
+                                   AdornmentIcon="@Icons.Material.Filled.AdminPanelSettings"
+                                   AdornmentColor="Color.Primary">
+                            <MudSelectItem Value="0" Disabled="true">-- Select Role --</MudSelectItem>
+                            @foreach (var role in roles)
+                            {
+                                <MudSelectItem Value="@role.RoleId">@role.RoleName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center">
+                            <MudSwitch @bind-Value="model.IsActive"
+                                       Color="Color.Success"
+                                       Label="Active Account"
+                                       For="@(() => model.IsActive)" />
+
+                            <MudSwitch @bind-Value="model.IsVerified"
+                                       Color="Color.Info"
+                                       Label="Email Verified"
+                                       For="@(() => model.IsVerified)" />
+                        </MudStack>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.Password"
+                                      Label="Password"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      InputType="@passwordInputType"
+                                      For="@(() => model.Password)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@passwordIcon"
+                                      OnAdornmentClick="TogglePasswordVisibility"
+                                      AdornmentAriaLabel="Show Password" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.ConfirmPassword"
+                                      Label="Confirm Password"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      InputType="@passwordInputType"
+                                      For="@(() => model.ConfirmPassword)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@passwordIcon"
+                                      OnAdornmentClick="TogglePasswordVisibility"
+                                      AdornmentAriaLabel="Show Password" />
+                    </MudItem>
+
+                    <!-- Email Notification Option -->
+                    <MudItem xs="12">
+                        <MudCheckBox @bind-Value="model.SendWelcomeEmail"
+                                     Color="Color.Primary"
+                                     Label="Send welcome email with login credentials to the user"
+                                     Dense="true" />
+                    </MudItem>
+
+                    <!-- Password Requirements -->
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                            <MudText Typo="Typo.body2"><strong>Password Requirements:</strong></MudText>
+                            <MudText Typo="Typo.caption">
+                                • Minimum 8 characters<br />
+                                • At least one uppercase letter<br />
+                                • At least one lowercase letter<br />
+                                • At least one number<br />
+                                • At least one special character
+                            </MudText>
+                        </MudAlert>
+                    </MudItem>
+
+                    <!-- Action Buttons -->
+                    <MudItem xs="12" Class="mt-4">
+                        <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                            <MudButton Variant="Variant.Outlined"
+                                       StartIcon="@Icons.Material.Filled.Cancel"
+                                       OnClick="@(() => Navigation.NavigateTo("/users"))"
+                                       Disabled="@saving">
+                                Cancel
+                            </MudButton>
+                            <MudButton ButtonType="ButtonType.Submit"
+                                       Variant="Variant.Filled"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       Style="background-color: #D4A853; color: white;"
+                                       Disabled="@saving">
+                                @if (saving)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="margin-right: 8px;" />
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <span>Create User</span>
+                                }
+                            </MudButton>
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+            </EditForm>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private AddUserModel model = new();
+    private bool saving = false;
+    private bool loadingRoles = true;
+    private bool showPassword = false;
+    private InputType passwordInputType = InputType.Password;
+    private string passwordIcon = Icons.Material.Filled.VisibilityOff;
+
+    private List<Role> roles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+        // Set default values
+        model.IsActive = true;
+        model.IsVerified = false;
+        model.SendWelcomeEmail = true; // Default to sending email
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            loadingRoles = true;
+            var rolesFromDb = await unitOfWork.roleRepository.GetAllAsync();
+            roles = rolesFromDb.ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading roles: {ex.Message}", Severity.Error);
+            // Fallback to default roles if database load fails
+            roles = new List<Role>
+            {
+                new Role { RoleId = 1, RoleName = "Administrator" },
+                new Role { RoleId = 2, RoleName = "Manager" },
+                new Role { RoleId = 3, RoleName = "User" },
+                new Role { RoleId = 4, RoleName = "Staff" }
+            };
+        }
+        finally
+        {
+            loadingRoles = false;
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        if (showPassword)
+        {
+            showPassword = false;
+            passwordInputType = InputType.Password;
+            passwordIcon = Icons.Material.Filled.VisibilityOff;
+        }
+        else
+        {
+            showPassword = true;
+            passwordInputType = InputType.Text;
+            passwordIcon = Icons.Material.Filled.Visibility;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            saving = true;
+            StateHasChanged();
+
+            // Validate password strength
+            if (!IsPasswordStrong(model.Password))
+            {
+                Snackbar.Add("Password does not meet the requirements", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            // Create new user
+            var user = new User
+                {
+                    FullName = model.FullName,
+                    UserNameId = model.UserNameId,
+                    Email = model.Email,
+                    PhoneNumber = model.PhoneNumber,
+                    Location = model.Location,
+                    RoleId = model.RoleId,
+                    IsActive = model.IsActive,
+                    IsVerified = model.IsVerified,
+                    CreatedAt = DateTime.Now,
+                    ChangePassword = true,
+                    PasswordHash = HashPassword(model.Password),
+                    EmailVerificationToken = model.IsVerified ? null : Guid.NewGuid().ToString()
+                };
+
+            // Check if email already exists
+            var existingUser = await unitOfWork.userRepository.GetByEmailAsync(user.Email);
+            if (existingUser != null)
+            {
+                Snackbar.Add("A user with this email already exists", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            // Add user to database
+            await unitOfWork.userRepository.AddAsync(user);
+            await unitOfWork.SaveAsync();
+
+            Snackbar.Add("User created successfully!", Severity.Success);
+
+            // Send welcome email if checkbox is checked
+            if (model.SendWelcomeEmail)
+            {
+                try
+                {
+                    await emailService.SendNewUserEmailAsync(
+                        model.Email,
+                        model.UserNameId,
+                        model.Email,
+                        model.Password  // Send the plain text password (only in the email)
+                    );
+                    Snackbar.Add("Welcome email sent successfully!", Severity.Success);
+                }
+                catch (Exception emailEx)
+                {
+                    Snackbar.Add($"User created but email failed: {emailEx.Message}", Severity.Warning);
+                    Console.WriteLine($"Email error: {emailEx}");
+                }
+            }
+
+            // Navigate back to users list
+            await Task.Delay(1000); // Delay to show success messages
+            Navigation.NavigateTo("/users");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating user: {ex.Message}", Severity.Error);
+            Console.WriteLine($"Error: {ex}");
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool IsPasswordStrong(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 8)
+            return false;
+
+        bool hasUpperCase = password.Any(char.IsUpper);
+        bool hasLowerCase = password.Any(char.IsLower);
+        bool hasDigit = password.Any(char.IsDigit);
+        bool hasSpecialChar = password.Any(ch => !char.IsLetterOrDigit(ch));
+
+        return hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar;
+    }
+
+    private string HashPassword(string password)
+    {
+        return BCrypt.Net.BCrypt.HashPassword(password);
+    }
+
+    // Model for the form
+    public class AddUserModel
+    {
+        [Required(ErrorMessage = "Full name is required")]
+        [StringLength(100, ErrorMessage = "Full name cannot exceed 100 characters")]
+        public string FullName { get; set; } = ""; 
+
+        [Required(ErrorMessage = "User name is required")]
+        [StringLength(100, ErrorMessage = "User name cannot exceed 100 characters")]
+        public string UserNameId { get; set; } = "";
+
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Invalid email address")]
+        [StringLength(100, ErrorMessage = "Email cannot exceed 100 characters")]
+        public string Email { get; set; } = "";
+
+        [StringLength(20, ErrorMessage = "Phone number cannot exceed 20 characters")]
+        public string? PhoneNumber { get; set; }
+
+        [StringLength(100, ErrorMessage = "Location cannot exceed 100 characters")]
+        public string? Location { get; set; }
+
+        [Required(ErrorMessage = "Password is required")]
+        [StringLength(100, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters")]
+        public string Password { get; set; } = "";
+
+        [Required(ErrorMessage = "Please confirm your password")]
+        [Compare(nameof(Password), ErrorMessage = "Passwords do not match")]
+        public string ConfirmPassword { get; set; } = "";
+
+        [Required(ErrorMessage = "Role is required")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a role")]
+        public int RoleId { get; set; }
+
+        public bool IsActive { get; set; } = true;
+        public bool IsVerified { get; set; } = false;
+        public bool SendWelcomeEmail { get; set; } = true;
+    }
+}

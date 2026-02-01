@@ -1,0 +1,527 @@
+﻿@page "/users/view/{UserId:int}"
+@using KNQASelfService.Interfaces.UserManagement
+@using KNQASelfService.Models;
+@using KNQASelfService.Interfaces;
+@inject IUnitOfWork unitOfWork
+@inject IEmailService emailService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (loading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+            <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+        </div>
+    }
+    else if (user == null)
+    {
+        <MudAlert Severity="Severity.Error">User not found</MudAlert>
+    }
+    else
+    {
+        <!-- Page Header -->
+        <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                                   Style="color: white;"
+                                   OnClick="@(() => Navigation.NavigateTo("/users"))" />
+                    <MudAvatar Size="Size.Large" Style="background-color: #D4A853; color: white; width: 60px; height: 60px; font-size: 1.5rem;">
+                        @user.FullName?.Substring(0, 1).ToUpper()
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            @user.FullName
+                        </MudText>
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudChip T="string" Size="Size.Small" Style="@GetRoleStyle(user.RoleId)">
+                                @GetRoleName(user.RoleId)
+                            </MudChip>
+                            @if (user.IsActive)
+                            {
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #4caf50; color: white;">
+                                    Active
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #999; color: white;">
+                                    Inactive
+                                </MudChip>
+                            }
+                            @if (user.IsVerified)
+                            {
+                                <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Verified" Style="background-color: #2196f3; color: white;">
+                                    Verified
+                                </MudChip>
+                            }
+                        </MudStack>
+                    </div>
+                </MudStack>
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Filled"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               Style="background-color: #D4A853; color: white;"
+                               OnClick="@(() => Navigation.NavigateTo($"/users/edit/{UserId}"))">
+                        Edit User
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled"
+                               StartIcon="@Icons.Material.Filled.Delete"
+                               Color="Color.Error"
+                               OnClick="ConfirmDelete">
+                        Delete User
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        <MudGrid>
+            <!-- Left Column - User Information -->
+            <MudItem xs="12" md="8">
+                <!-- Contact Information -->
+                <MudPaper Elevation="3" Class="pa-4 mb-4" Style="border-radius: 12px; border-left: 4px solid #D4A853;">
+                    <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600; margin-bottom: 16px;">
+                        <MudIcon Icon="@Icons.Material.Filled.ContactMail" Style="vertical-align: middle; margin-right: 8px;" />
+                        Contact Information
+                    </MudText>
+                    <MudDivider Class="mb-3" />
+
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.Email" Style="color: #D4A853;" />
+                                <div>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Email</MudText>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@user.Email</MudText>
+                                </div>
+                            </MudStack>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.Phone" Style="color: #D4A853;" />
+                                <div>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Phone</MudText>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                                        @(string.IsNullOrEmpty(user.PhoneNumber) ? "Not provided" : user.PhoneNumber)
+                                    </MudText>
+                                </div>
+                            </MudStack>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Style="color: #D4A853;" />
+                                <div>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Location</MudText>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                                        @(string.IsNullOrEmpty(user.Location) ? "Not provided" : user.Location)
+                                    </MudText>
+                                </div>
+                            </MudStack>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <!-- Account Details -->
+                <MudPaper Elevation="3" Class="pa-4" Style="border-radius: 12px; border-left: 4px solid #00286E;">
+                    <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600; margin-bottom: 16px;">
+                        <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Style="vertical-align: middle; margin-right: 8px;" />
+                        Account Details
+                    </MudText>
+                    <MudDivider Class="mb-3" />
+
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.Badge" Style="color: #00286E;" />
+                                <div>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">User Name</MudText>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@user.UserNameId</MudText>
+                                </div>
+                            </MudStack>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Style="color: #00286E;" />
+                                <div>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Role</MudText>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@GetRoleName(user.RoleId)</MudText>
+                                </div>
+                            </MudStack>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Style="color: #00286E;" />
+                                <div>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Member Since</MudText>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                                        @user.CreatedAt.ToString("MMMM dd, yyyy")
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #999;">@GetTimeAgo(user.CreatedAt)</MudText>
+                                </div>
+                            </MudStack>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@Icons.Material.Filled.Security" Style="color: #00286E;" />
+                                <div>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Account Status</MudText>
+                                    <MudStack Row="true" Spacing="1">
+                                        @if (user.IsActive)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Inactive</MudChip>
+                                        }
+                                        @if (user.IsVerified)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info">Verified</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Unverified</MudChip>
+                                        }
+                                    </MudStack>
+                                </div>
+                            </MudStack>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Right Column - Quick Stats & Actions -->
+            <MudItem xs="12" md="4">
+                <!-- Quick Stats -->
+                <MudPaper Elevation="3" Class="pa-4 mb-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+                    <MudText Typo="Typo.h6" Style="color: white; font-weight: 600; margin-bottom: 16px;">
+                        Quick Stats
+                    </MudText>
+                    <MudDivider Class="mb-3" Style="background-color: rgba(255,255,255,0.2);" />
+
+                    <MudStack Spacing="3">
+                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <div>
+                                    <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.7);">Days Active</MudText>
+                                    <MudText Typo="Typo.h5" Style="color: white; font-weight: 700;">
+                                        @((DateTime.Now - user.CreatedAt).Days)
+                                    </MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Style="color: #D4A853;" Size="Size.Large" />
+                            </MudStack>
+                        </MudPaper>
+
+                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween">
+                                <div>
+                                    <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.7);">Status</MudText>
+                                    <MudText Typo="Typo.h6" Style="color: white; font-weight: 700;">
+                                        @(user.IsActive ? "Active" : "Inactive")
+                                    </MudText>
+                                </div>
+                                <MudIcon Icon="@(user.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                         Style="@(user.IsActive ? "color: #4caf50;" : "color: #f44336;")"
+                                         Size="Size.Large" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudStack>
+                </MudPaper>
+
+                <!-- Quick Actions -->
+                <MudPaper Elevation="3" Class="pa-4" Style="border-radius: 12px; border-top: 4px solid #D4A853;margin-bottom:20px">
+                    <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600; margin-bottom: 16px;">
+                        Quick Actions
+                    </MudText>
+                    <MudDivider Class="mb-3" />
+
+                    <MudStack Spacing="2">
+                        <MudButton Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.Email"
+                                   FullWidth="true"
+                                   Style="color: #00286E; border-color: #00286E;"
+                                   OnClick="@(() => SendEmail(user.Email))">
+                            Send Email
+                        </MudButton>
+
+                        <MudButton Variant="Variant.Outlined"
+                                   StartIcon="@Icons.Material.Filled.LockReset"
+                                   FullWidth="true"
+                                   Style="color: #D4A853; border-color: #D4A853;"
+                                   OnClick="ResetPassword"
+                                   Disabled="@resettingPassword">
+                            @if (resettingPassword)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="margin-right: 8px;" />
+                                <span>Sending...</span>
+                            }
+                            else
+                            {
+                                <span>Reset Password</span>
+                            }
+                        </MudButton>
+
+                        @if (!user.IsVerified)
+                        {
+                            <MudButton Variant="Variant.Outlined"
+                                       StartIcon="@Icons.Material.Filled.MarkEmailRead"
+                                       FullWidth="true"
+                                       Color="Color.Info"
+                                       OnClick="VerifyEmail">
+                                Verify Email
+                            </MudButton>
+                        }
+
+                        <MudButton Variant="Variant.Outlined"
+                                   StartIcon="@(user.IsActive ? Icons.Material.Filled.Block : Icons.Material.Filled.CheckCircle)"
+                                   FullWidth="true"
+                                   Color="@(user.IsActive ? Color.Error : Color.Success)"
+                                   OnClick="ToggleActiveStatus">
+                            @(user.IsActive ? "Deactivate Account" : "Activate Account")
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int UserId { get; set; }
+
+    private User? user;
+    private bool loading = true;
+    private bool resettingPassword = false;
+
+    private Dictionary<int, string> roles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+        await LoadUser();
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            var rolesFromDb = await unitOfWork.roleRepository.GetAllAsync();
+            roles = rolesFromDb.ToDictionary(r => r.RoleId, r => r.RoleName);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading roles: {ex.Message}");
+            // Fallback to default roles
+            roles = new Dictionary<int, string>
+            {
+                { 1, "Administrator" },
+                { 2, "Manager" },
+                { 3, "User" },
+                { 4, "Staff" }
+            };
+        }
+    }
+
+    private async Task LoadUser()
+    {
+        try
+        {
+            loading = true;
+            user = await unitOfWork.userRepository.GetByIdAsync(UserId);
+            loading = false;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading user: {ex.Message}", Severity.Error);
+            loading = false;
+        }
+    }
+
+    private string GetRoleName(int roleId)
+    {
+        return roles.ContainsKey(roleId) ? roles[roleId] : "Unknown";
+    }
+
+    private string GetRoleStyle(int roleId)
+    {
+        var roleName = GetRoleName(roleId).ToLower();
+        return roleName switch
+        {
+            "administrator" or "admin" => "background-color: #00286E; color: white;",
+            "manager" => "background-color: #0288d1; color: white;",
+            "user" => "background-color: #D4A853; color: white;",
+            "staff" => "background-color: #4caf50; color: white;",
+            _ => "background-color: #999; color: white;"
+        };
+    }
+
+    private string GetTimeAgo(DateTime date)
+    {
+        var timeSpan = DateTime.Now - date;
+
+        if (timeSpan.TotalDays > 365)
+            return $"{(int)(timeSpan.TotalDays / 365)} year(s) ago";
+        if (timeSpan.TotalDays > 30)
+            return $"{(int)(timeSpan.TotalDays / 30)} month(s) ago";
+        if (timeSpan.TotalDays > 1)
+            return $"{(int)timeSpan.TotalDays} day(s) ago";
+        if (timeSpan.TotalHours > 1)
+            return $"{(int)timeSpan.TotalHours} hour(s) ago";
+        if (timeSpan.TotalMinutes > 1)
+            return $"{(int)timeSpan.TotalMinutes} minute(s) ago";
+
+        return "Just now";
+    }
+
+    private void SendEmail(string email)
+    {
+        Navigation.NavigateTo($"mailto:{email}");
+    }
+
+    private async Task ResetPassword()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Reset Password",
+            $"This will generate a temporary password and send it to {user.FullName} via email. Do you want to continue?",
+            yesText: "Send", cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                resettingPassword = true;
+                StateHasChanged();
+
+                // Generate a temporary password
+                var tempPassword = GenerateTemporaryPassword();
+
+                // Hash the password
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword);
+                user.ChangePassword = true; // Force user to change password on next login
+
+                // Update user in database
+                await unitOfWork.userRepository.UpdateAsync(user);
+                await unitOfWork.SaveAsync();
+
+                // Send email with new password
+                await emailService.SendNewUserEmailAsync(
+                    user.Email,
+                    user.FullName,
+                    user.Email,
+                    tempPassword
+                );
+
+                Snackbar.Add("Password reset successfully. Email sent with new credentials.", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error resetting password: {ex.Message}", Severity.Error);
+                Console.WriteLine($"Password reset error: {ex}");
+            }
+            finally
+            {
+                resettingPassword = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private string GenerateTemporaryPassword()
+    {
+        // Generate a secure random password
+        const string upperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const string lowerCase = "abcdefghijklmnopqrstuvwxyz";
+        const string digits = "0123456789";
+        const string specialChars = "!@#$%^&*";
+
+        var random = new Random();
+        var password = new char[12];
+
+        // Ensure at least one of each required character type
+        password[0] = upperCase[random.Next(upperCase.Length)];
+        password[1] = lowerCase[random.Next(lowerCase.Length)];
+        password[2] = digits[random.Next(digits.Length)];
+        password[3] = specialChars[random.Next(specialChars.Length)];
+
+        // Fill the rest randomly
+        const string allChars = upperCase + lowerCase + digits + specialChars;
+        for (int i = 4; i < password.Length; i++)
+        {
+            password[i] = allChars[random.Next(allChars.Length)];
+        }
+
+        // Shuffle the password
+        return new string(password.OrderBy(x => random.Next()).ToArray());
+    }
+
+    private async Task VerifyEmail()
+    {
+        try
+        {
+            user.IsVerified = true;
+            user.EmailVerificationToken = null;
+            await unitOfWork.userRepository.UpdateAsync(user);
+            await unitOfWork.SaveAsync();
+            Snackbar.Add("Email verified successfully", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error verifying email: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ToggleActiveStatus()
+    {
+        try
+        {
+            user.IsActive = !user.IsActive;
+            await unitOfWork.userRepository.UpdateAsync(user);
+            await unitOfWork.SaveAsync();
+            Snackbar.Add($"User {(user.IsActive ? "activated" : "deactivated")} successfully", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating status: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ConfirmDelete()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete User",
+            $"Are you sure you want to delete {user.FullName}? This action cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel",
+            options: new DialogOptions { MaxWidth = MaxWidth.Small });
+
+        if (confirmed == true)
+        {
+            await DeleteUser();
+        }
+    }
+
+    private async Task DeleteUser()
+    {
+        try
+        {
+            await unitOfWork.userRepository.DeleteAsync(UserId);
+            await unitOfWork.SaveAsync();
+            Snackbar.Add("User deleted successfully", Severity.Success);
+            await Task.Delay(500);
+            Navigation.NavigateTo("/users");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting user: {ex.Message}", Severity.Error);
+        }
+    }
+}

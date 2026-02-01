@@ -1,0 +1,112 @@
+is_global = true
+build_property.MudDebugAnalyzer = 
+build_property.MudAllowedAttributePattern = 
+build_property.MudAllowedAttributeList = 
+build_property.TargetFramework = net8.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = KNQASelfService
+build_property.RootNamespace = KNQASelfService
+build_property.ProjectDir = C:\Users\Attain\source\repos\KNQASelfService\KNQASelfService\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 8.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = C:\Users\Attain\source\repos\KNQASelfService\KNQASelfService
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 8.0
+build_property.EnableCodeStyleSeverity = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/App.razor]
+build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/Component.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29tcG9uZW50LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/Counter.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ291bnRlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/FetchData.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRmV0Y2hEYXRhLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSW5kZXgucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/LeaveApplicationDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTGVhdmVBcHBsaWNhdGlvbkRldGFpbHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/MyProfile.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTXlQcm9maWxlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Auth/Login.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0F1dGhcTG9naW4ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Auth/RedirectToLogin.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0F1dGhcUmVkaXJlY3RUb0xvZ2luLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Leave_Management/Leave_Application.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0xlYXZlX01hbmFnZW1lbnRcTGVhdmVfQXBwbGljYXRpb24ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_User_Management/AddUser.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1VzZXJfTWFuYWdlbWVudFxBZGRVc2VyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_User_Management/EditUser.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1VzZXJfTWFuYWdlbWVudFxFZGl0VXNlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_User_Management/Users.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1VzZXJfTWFuYWdlbWVudFxVc2Vycy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_User_Management/ViewUser.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1VzZXJfTWFuYWdlbWVudFxWaWV3VXNlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Shared/LoginLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkXExvZ2luTGF5b3V0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Shared/SurveyPrompt.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkXFN1cnZleVByb21wdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Shared/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkXE1haW5MYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-gh0114rnjs
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Shared/NavMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkXE5hdk1lbnUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-j1oxx4nsz0
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/Error.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXJyb3IuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Host.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0hvc3QuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Layout.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0xheW91dC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 

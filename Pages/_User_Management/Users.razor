@@ -1,0 +1,659 @@
+﻿@page "/users"
+@using KNQASelfService.Models;
+@using KNQASelfService.Interfaces;
+@using ClosedXML.Excel;
+@using System.IO;
+@inject IUnitOfWork unitOfWork
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+    <!-- Page Header with KNQA Colors -->
+    <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+        <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.People" Style="margin-right: 12px; vertical-align: middle;" />
+                    User Management
+                </MudText>
+                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                    Manage and monitor all system users
+                </MudText>
+            </MudItem>
+            <MudItem xs="12" md="6" Style="text-align: right;">
+                <MudButton Variant="Variant.Filled"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Style="background-color: #D4A853; color: white; font-weight: 600;"
+                           Size="Size.Large"
+                           OnClick="AddNewUser">
+                    Add New User
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Stats Cards with KNQA Colors -->
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <div>
+                        <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Users</MudText>
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@totalUsers</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Style="color: #D4A853;" />
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <div>
+                        <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Active Users</MudText>
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@activeUsers</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: rgba(255,255,255,0.7);" />
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <div>
+                        <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Verified Users</MudText>
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@verifiedUsers</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Large" Style="color: #D4A853;" />
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <div>
+                        <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">New This Month</MudText>
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@newUsersThisMonth</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Large" Style="color: rgba(255,255,255,0.7);" />
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Data Grid -->
+    <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853; margin-bottom: 20px">
+        @if (loading)
+        {
+            <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+            </div>
+        }
+        else
+        {
+            <MudDataGrid @ref="dataGrid"
+                         T="User"
+                         ServerData="ServerReload"
+                         Filterable="false"
+                         Dense="true"
+                         Hover="true"
+                         Striped="true"
+                         RowsPerPage="10"
+                         Style="border-radius: 12px;">
+                <ToolBarContent>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.FilterList" Style="color: #00286E;" />
+                            <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">User List</MudText>
+                            <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">@totalUsers users</MudChip>
+                        </MudStack>
+
+                        <MudStack Row="true" Spacing="2">
+                            <MudTextField @bind-Value="searchString"
+                                          Placeholder="Search users..."
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Search"
+                                          IconSize="Size.Medium"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          DebounceInterval="300"
+                                          OnDebounceIntervalElapsed="OnSearch"
+                                          Style="min-width: 300px;"
+                                          Class="mt-0">
+                            </MudTextField>
+
+                            <MudTooltip Text="Refresh">
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                               Style="color: #00286E; border: 1px solid #00286E;"
+                                               OnClick="RefreshData"
+                                               Disabled="@exporting" />
+                            </MudTooltip>
+
+                            <MudTooltip Text="Export to Excel">
+                                <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                               Style="color: #D4A853; border: 1px solid #D4A853;"
+                                               OnClick="ExportToExcel"
+                                               Disabled="@exporting" />
+                            </MudTooltip>
+                        </MudStack>
+                    </MudStack>
+                </ToolBarContent>
+
+                <Columns>
+                    <PropertyColumn Property="x => x.UserId" Title="ID" Sortable="true">
+                        <CellTemplate>
+                            <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">#@context.Item.UserId</MudChip>
+                        </CellTemplate>
+                    </PropertyColumn>
+
+                    <TemplateColumn Title="User" Sortable="false">
+                        <CellTemplate>
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudAvatar Style="background-color: #D4A853; color: white;" Size="Size.Small">
+                                    @context.Item.FullName?.Substring(0, 1).ToUpper()
+                                </MudAvatar>
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">@context.Item.FullName</MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">@context.Item.Email</MudText>
+                                </div>
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+
+                    <PropertyColumn Property="x => x.PhoneNumber" Title="Phone" Sortable="false">
+                        <CellTemplate>
+                            @if (!string.IsNullOrEmpty(context.Item.PhoneNumber))
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" Style="color: #D4A853;" />
+                                    <MudText Typo="Typo.body2">@context.Item.PhoneNumber</MudText>
+                                </MudStack>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Style="color: #999;">-</MudText>
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x.Location" Title="Location" Sortable="true">
+                        <CellTemplate>
+                            @if (!string.IsNullOrEmpty(context.Item.Location))
+                            {
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Style="color: #D4A853;" />
+                                    <MudText Typo="Typo.body2">@context.Item.Location</MudText>
+                                </MudStack>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Style="color: #999;">-</MudText>
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x.RoleId" Title="Role" Sortable="true">
+                        <CellTemplate>
+                            @{
+                                var (colorStyle, label) = GetRoleInfo(context.Item.RoleId);
+                            }
+                            <MudChip T="string" Size="Size.Small" Style="@colorStyle">@label</MudChip>
+                        </CellTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x.IsActive" Title="Status" Sortable="true">
+                        <CellTemplate>
+                            @if (context.Item.IsActive)
+                            {
+                                <MudChip T="string" Style="background-color: #4caf50; color: white;" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle">
+                                    Active
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Style="background-color: #999; color: white;" Size="Size.Small" Icon="@Icons.Material.Filled.Block">
+                                    Inactive
+                                </MudChip>
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x.IsVerified" Title="Verified" Sortable="true">
+                        <CellTemplate>
+                            @if (context.Item.IsVerified)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Style="color: #4caf50;" Size="Size.Medium" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Warning" Style="color: #D4A853;" Size="Size.Medium" />
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+
+                    <PropertyColumn Property="x => x.CreatedAt" Title="Joined" Sortable="true">
+                        <CellTemplate>
+                            <MudText Typo="Typo.body2">@context.Item.CreatedAt.ToString("MMM dd, yyyy")</MudText>
+                            <MudText Typo="Typo.caption" Style="color: #999;">@GetTimeAgo(context.Item.CreatedAt)</MudText>
+                        </CellTemplate>
+                    </PropertyColumn>
+
+                    <TemplateColumn Title="Actions" Sortable="false" Filterable="false">
+                        <CellTemplate>
+                            <MudStack Row="true" Spacing="1">
+                                <MudTooltip Text="View Details">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                   Size="Size.Small"
+                                                   Style="color: #00286E;"
+                                                   OnClick="@(() => ViewUser(context.Item.UserId))" />
+                                </MudTooltip>
+
+                                <MudTooltip Text="Edit User">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Size="Size.Small"
+                                                   Style="color: #D4A853;"
+                                                   OnClick="@(() => EditUser(context.Item.UserId))" />
+                                </MudTooltip>
+
+                                <MudTooltip Text="Delete User">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Style="color: #f44336;"
+                                                   OnClick="@(() => ConfirmDeleteUser(context.Item))" />
+                                </MudTooltip>
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+
+                <PagerContent>
+                    <MudDataGridPager T="User" PageSizeOptions="new int[] { 5, 10, 25, 50, 100 }" />
+                </PagerContent>
+
+                <NoRecordsContent>
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                        <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No users found</MudText>
+                        <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria</MudText>
+                    </div>
+                </NoRecordsContent>
+            </MudDataGrid>
+        }
+    </MudPaper>
+</MudContainer>
+
+<!-- Export Progress Dialog -->
+<MudOverlay Visible="@exporting" DarkBackground="true" Absolute="false">
+    <MudPaper Class="pa-6" Style="min-width: 300px;">
+        <MudStack AlignItems="AlignItems.Center" Spacing="3">
+            <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" />
+            <MudText Typo="Typo.h6">Exporting to Excel...</MudText>
+            <MudText Typo="Typo.body2" Style="color: #666;">Please wait while we prepare your file</MudText>
+        </MudStack>
+    </MudPaper>
+</MudOverlay>
+
+@code {
+    private MudDataGrid<User> dataGrid;
+    private string searchString = "";
+    private bool loading = true;
+    private bool exporting = false;
+
+    // Stats
+    private int totalUsers = 0;
+    private int activeUsers = 0;
+    private int verifiedUsers = 0;
+    private int newUsersThisMonth = 0;
+
+    // Roles dictionary
+    private Dictionary<int, string> roles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+        await LoadStats();
+        loading = false;
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            var rolesFromDb = await unitOfWork.roleRepository.GetAllAsync();
+            roles = rolesFromDb.ToDictionary(r => r.RoleId, r => r.RoleName);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading roles: {ex.Message}");
+            // Fallback to default roles
+            roles = new Dictionary<int, string>
+            {
+                { 1, "Administrator" },
+                { 2, "Manager" },
+                { 3, "User" },
+                { 4, "Staff" }
+            };
+        }
+    }
+
+    private async Task LoadStats()
+    {
+        try
+        {
+            var allUsers = await unitOfWork.userRepository.GetAllAsync();
+            totalUsers = allUsers.Count();
+            activeUsers = allUsers.Count(u => u.IsActive);
+            verifiedUsers = allUsers.Count(u => u.IsVerified);
+            newUsersThisMonth = allUsers.Count(u => u.CreatedAt.Month == DateTime.Now.Month && u.CreatedAt.Year == DateTime.Now.Year);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading stats: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task<GridData<User>> ServerReload(GridState<User> state)
+    {
+        try
+        {
+            var allUsers = await unitOfWork.userRepository.GetAllAsync();
+            IEnumerable<User> data = allUsers;
+
+            if (!string.IsNullOrWhiteSpace(searchString))
+            {
+                data = data.Where(user =>
+                    (user.FullName?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (user.Email?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (user.PhoneNumber?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (user.Location?.Contains(searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+                );
+            }
+
+            var totalItems = data.Count();
+
+            var sortDefinition = state.SortDefinitions.FirstOrDefault();
+            if (sortDefinition != null)
+            {
+                data = sortDefinition.SortBy switch
+                {
+                    nameof(User.UserId) => sortDefinition.Descending ? data.OrderByDescending(o => o.UserId) : data.OrderBy(o => o.UserId),
+                    nameof(User.FullName) => sortDefinition.Descending ? data.OrderByDescending(o => o.FullName) : data.OrderBy(o => o.FullName),
+                    nameof(User.Email) => sortDefinition.Descending ? data.OrderByDescending(o => o.Email) : data.OrderBy(o => o.Email),
+                    nameof(User.Location) => sortDefinition.Descending ? data.OrderByDescending(o => o.Location) : data.OrderBy(o => o.Location),
+                    nameof(User.RoleId) => sortDefinition.Descending ? data.OrderByDescending(o => o.RoleId) : data.OrderBy(o => o.RoleId),
+                    nameof(User.IsActive) => sortDefinition.Descending ? data.OrderByDescending(o => o.IsActive) : data.OrderBy(o => o.IsActive),
+                    nameof(User.IsVerified) => sortDefinition.Descending ? data.OrderByDescending(o => o.IsVerified) : data.OrderBy(o => o.IsVerified),
+                    nameof(User.CreatedAt) => sortDefinition.Descending ? data.OrderByDescending(o => o.CreatedAt) : data.OrderBy(o => o.CreatedAt),
+                    _ => data
+                };
+            }
+            else
+            {
+                data = data.OrderByDescending(o => o.CreatedAt);
+            }
+
+            var pagedData = data.Skip(state.Page * state.PageSize).Take(state.PageSize).ToList();
+
+            return new GridData<User>
+                {
+                    TotalItems = totalItems,
+                    Items = pagedData
+                };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading users: {ex.Message}", Severity.Error);
+            return new GridData<User>
+                {
+                    TotalItems = 0,
+                    Items = new List<User>()
+                };
+        }
+    }
+
+    private async Task OnSearch()
+    {
+        await dataGrid.ReloadServerData();
+    }
+
+    private async Task RefreshData()
+    {
+        loading = true;
+        StateHasChanged();
+
+        await LoadRoles();
+        await LoadStats();
+        await dataGrid.ReloadServerData();
+
+        loading = false;
+        Snackbar.Add("Data refreshed successfully", Severity.Success);
+    }
+
+    private (string colorStyle, string label) GetRoleInfo(int roleId)
+    {
+        if (roles.ContainsKey(roleId))
+        {
+            var roleName = roles[roleId];
+
+            // Determine color based on role name
+            var colorStyle = roleName.ToLower() switch
+            {
+                "administrator" or "admin" => "background-color: #00286E; color: white;",
+                "manager" => "background-color: #0288d1; color: white;",
+                "user" => "background-color: #D4A853; color: white;",
+                "staff" => "background-color: #4caf50; color: white;",
+                _ => "background-color: #999; color: white;"
+            };
+
+            return (colorStyle, roleName);
+        }
+
+        return ("background-color: #999; color: white;", "Unknown");
+    }
+
+    private string GetTimeAgo(DateTime date)
+    {
+        var timeSpan = DateTime.Now - date;
+
+        if (timeSpan.TotalDays > 365)
+            return $"{(int)(timeSpan.TotalDays / 365)} year(s) ago";
+        if (timeSpan.TotalDays > 30)
+            return $"{(int)(timeSpan.TotalDays / 30)} month(s) ago";
+        if (timeSpan.TotalDays > 1)
+            return $"{(int)timeSpan.TotalDays} day(s) ago";
+        if (timeSpan.TotalHours > 1)
+            return $"{(int)timeSpan.TotalHours} hour(s) ago";
+        if (timeSpan.TotalMinutes > 1)
+            return $"{(int)timeSpan.TotalMinutes} minute(s) ago";
+
+        return "Just now";
+    }
+
+    private void AddNewUser()
+    {
+        Navigation.NavigateTo("/users/add");
+    }
+
+    private void ViewUser(int userId)
+    {
+        Navigation.NavigateTo($"/users/view/{userId}");
+    }
+
+    private void EditUser(int userId)
+    {
+        Navigation.NavigateTo($"/users/edit/{userId}");
+    }
+
+    private async Task ConfirmDeleteUser(User user)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete User",
+            $"Are you sure you want to delete '{user.FullName}'? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: new DialogOptions
+                {
+                    MaxWidth = MaxWidth.Small,
+                    CloseButton = true
+                });
+
+        if (confirmed == true)
+        {
+            await DeleteUser(user.UserId, user.FullName);
+        }
+    }
+
+    private async Task DeleteUser(int userId, string userName)
+    {
+        try
+        {
+            await unitOfWork.userRepository.DeleteAsync(userId);
+            await unitOfWork.SaveAsync();
+
+            Snackbar.Add($"User '{userName}' deleted successfully", Severity.Success);
+
+            // Reload data
+            await LoadStats();
+            await dataGrid.ReloadServerData();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting user: {ex.Message}", Severity.Error);
+            Console.WriteLine($"Delete error: {ex}");
+        }
+    }
+
+    private async Task ExportToExcel()
+    {
+        try
+        {
+            exporting = true;
+            StateHasChanged();
+
+            // Get all users for export
+            var allUsers = await unitOfWork.userRepository.GetAllAsync();
+            var usersList = allUsers.OrderByDescending(u => u.CreatedAt).ToList();
+
+            if (!usersList.Any())
+            {
+                Snackbar.Add("No data to export", Severity.Warning);
+                exporting = false;
+                return;
+            }
+
+            // Create Excel workbook
+            using var workbook = new XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Users");
+
+            // Set header style with KNQA colors
+            var headerRange = worksheet.Range(1, 1, 1, 9);
+            headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#00286E");
+            headerRange.Style.Font.FontColor = XLColor.White;
+            headerRange.Style.Font.Bold = true;
+            headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            headerRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+
+            // Add headers
+            worksheet.Cell(1, 1).Value = "User ID";
+            worksheet.Cell(1, 2).Value = "Full Name";
+            worksheet.Cell(1, 3).Value = "Email";
+            worksheet.Cell(1, 4).Value = "Phone Number";
+            worksheet.Cell(1, 5).Value = "Location";
+            worksheet.Cell(1, 6).Value = "Role";
+            worksheet.Cell(1, 7).Value = "Is Active";
+            worksheet.Cell(1, 8).Value = "Is Verified";
+            worksheet.Cell(1, 9).Value = "Created At";
+
+            // Add data rows
+            int row = 2;
+            foreach (var user in usersList)
+            {
+                worksheet.Cell(row, 1).Value = user.UserId;
+                worksheet.Cell(row, 2).Value = user.FullName ?? "";
+                worksheet.Cell(row, 3).Value = user.Email ?? "";
+                worksheet.Cell(row, 4).Value = user.PhoneNumber ?? "";
+                worksheet.Cell(row, 5).Value = user.Location ?? "";
+
+                // Role with label from database
+                var (_, roleLabel) = GetRoleInfo(user.RoleId);
+                worksheet.Cell(row, 6).Value = roleLabel;
+
+                // Active status
+                var activeCell = worksheet.Cell(row, 7);
+                activeCell.Value = user.IsActive ? "Yes" : "No";
+                if (user.IsActive)
+                {
+                    activeCell.Style.Fill.BackgroundColor = XLColor.FromHtml("#4caf50");
+                    activeCell.Style.Font.FontColor = XLColor.White;
+                }
+                else
+                {
+                    activeCell.Style.Fill.BackgroundColor = XLColor.FromHtml("#999999");
+                    activeCell.Style.Font.FontColor = XLColor.White;
+                }
+                activeCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                // Verified status
+                var verifiedCell = worksheet.Cell(row, 8);
+                verifiedCell.Value = user.IsVerified ? "Yes" : "No";
+                if (user.IsVerified)
+                {
+                    verifiedCell.Style.Fill.BackgroundColor = XLColor.FromHtml("#4caf50");
+                    verifiedCell.Style.Font.FontColor = XLColor.White;
+                }
+                else
+                {
+                    verifiedCell.Style.Fill.BackgroundColor = XLColor.FromHtml("#D4A853");
+                    verifiedCell.Style.Font.FontColor = XLColor.White;
+                }
+                verifiedCell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                worksheet.Cell(row, 9).Value = user.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
+
+                row++;
+            }
+
+            // Auto-fit columns
+            worksheet.Columns().AdjustToContents();
+
+            // Add borders to all cells
+            var dataRange = worksheet.Range(1, 1, row - 1, 9);
+            dataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            dataRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+
+            // Add alternating row colors
+            for (int i = 2; i < row; i++)
+            {
+                if (i % 2 == 0)
+                {
+                    worksheet.Range(i, 1, i, 9).Style.Fill.BackgroundColor = XLColor.FromHtml("#f5f5f5");
+                }
+            }
+
+            // Save to memory stream
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            var content = stream.ToArray();
+            var fileName = $"KNQA_Users_Export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+
+            // Download file using JavaScript
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(content));
+
+            Snackbar.Add($"Successfully exported {usersList.Count} users to Excel", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error exporting to Excel: {ex.Message}", Severity.Error);
+            Console.WriteLine($"Export error: {ex}");
+        }
+        finally
+        {
+            exporting = false;
+            StateHasChanged();
+        }
+    }
+}

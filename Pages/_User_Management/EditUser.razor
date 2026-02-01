@@ -1,0 +1,481 @@
+﻿@page "/users/edit/{UserId:int}"
+@using KNQASelfService.Models;
+@using KNQASelfService.Interfaces;
+@using System.ComponentModel.DataAnnotations;
+@inject IUnitOfWork unitOfWork
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (loading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+            <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+        </div>
+    }
+    else if (model == null)
+    {
+        <MudAlert Severity="Severity.Error">User not found</MudAlert>
+    }
+    else
+    {
+        <!-- Page Header -->
+        <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                               Style="color: white;"
+                               OnClick="@(() => Navigation.NavigateTo($"/users/view/{UserId}"))" />
+                <div>
+                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                        <MudIcon Icon="@Icons.Material.Filled.Edit" Style="margin-right: 12px; vertical-align: middle;" />
+                        Edit User
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                        Update user information for @model.FullName
+                    </MudText>
+                </div>
+            </MudStack>
+        </MudPaper>
+
+        <!-- Form -->
+        <MudPaper Elevation="3" Class="pa-6" Style="border-radius: 12px; border-top: 4px solid #D4A853;margin-bottom:20px">
+            <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <MudGrid>
+                    <!-- Personal Information Section -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600; margin-bottom: 16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Style="vertical-align: middle; margin-right: 8px;" />
+                            Personal Information
+                        </MudText>
+                        <MudDivider Style="margin-bottom: 16px;" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.UserNameId"
+                                      Label="User Name"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      For="@(() => model.UserNameId)"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Person"
+                                      AdornmentColor="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.FullName"
+                                      Label="Full Name"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      For="@(() => model.FullName)"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Person"
+                                      AdornmentColor="Color.Primary" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.Email"
+                                      Label="Email Address"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      InputType="InputType.Email"
+                                      For="@(() => model.Email)"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Email"
+                                      AdornmentColor="Color.Primary" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.PhoneNumber"
+                                      Label="Phone Number"
+                                      Variant="Variant.Outlined"
+                                      For="@(() => model.PhoneNumber)"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Phone"
+                                      AdornmentColor="Color.Primary" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.Location"
+                                      Label="Location"
+                                      Variant="Variant.Outlined"
+                                      For="@(() => model.Location)"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.LocationOn"
+                                      AdornmentColor="Color.Primary" />
+                    </MudItem>
+
+                    <!-- Account Information Section -->
+                    <MudItem xs="12" Class="mt-4">
+                        <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600; margin-bottom: 16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Security" Style="vertical-align: middle; margin-right: 8px;" />
+                            Account Information
+                        </MudText>
+                        <MudDivider Style="margin-bottom: 16px;" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        @if (loadingRoles)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                        }
+                        else
+                        {
+                            <MudSelect @bind-Value="model.RoleId"
+                                       Label="Role"
+                                       Variant="Variant.Outlined"
+                                       Required="true"
+                                       For="@(() => model.RoleId)"
+                                       Adornment="Adornment.Start"
+                                       AdornmentIcon="@Icons.Material.Filled.AdminPanelSettings"
+                                       AdornmentColor="Color.Primary">
+                                @foreach (var role in roles)
+                                {
+                                    <MudSelectItem Value="@role.RoleId">@role.RoleName</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center" Style="height: 100%;">
+                            <MudSwitch @bind-Value="model.IsActive"
+                                       Color="Color.Success"
+                                       Label="Active Account"
+                                       For="@(() => model.IsActive)" />
+
+                            <MudSwitch @bind-Value="model.IsVerified"
+                                       Color="Color.Info"
+                                       Label="Email Verified"
+                                       For="@(() => model.IsVerified)" />
+                        </MudStack>
+                    </MudItem>
+
+                    <!-- Password Change Section -->
+                    <MudItem xs="12" Class="mt-4">
+                        <MudExpansionPanels>
+                            <MudExpansionPanel Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                                <TitleContent>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudIcon Icon="@Icons.Material.Filled.Lock" Style="color: #D4A853;" />
+                                        <MudText Typo="Typo.h6" Style="color: #00286E;">Change Password (Optional)</MudText>
+                                    </MudStack>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudGrid>
+                                        <MudItem xs="12" md="6">
+                                            <MudTextField @bind-Value="model.NewPassword"
+                                                          Label="New Password"
+                                                          Variant="Variant.Outlined"
+                                                          InputType="@passwordInputType"
+                                                          Adornment="Adornment.End"
+                                                          AdornmentIcon="@passwordIcon"
+                                                          OnAdornmentClick="TogglePasswordVisibility"
+                                                          AdornmentAriaLabel="Show Password"
+                                                          HelperText="Leave blank to keep current password" />
+                                        </MudItem>
+
+                                        <MudItem xs="12" md="6">
+                                            <MudTextField @bind-Value="model.ConfirmNewPassword"
+                                                          Label="Confirm New Password"
+                                                          Variant="Variant.Outlined"
+                                                          InputType="@passwordInputType"
+                                                          Adornment="Adornment.End"
+                                                          AdornmentIcon="@passwordIcon"
+                                                          OnAdornmentClick="TogglePasswordVisibility"
+                                                          AdornmentAriaLabel="Show Password" />
+                                        </MudItem>
+
+                                        @if (!string.IsNullOrEmpty(model.NewPassword))
+                                        {
+                                            <MudItem xs="12">
+                                                <MudAlert Severity="Severity.Info" Dense="true">
+                                                    <MudText Typo="Typo.body2"><strong>Password Requirements:</strong></MudText>
+                                                    <MudText Typo="Typo.caption">
+                                                        • Minimum 8 characters • Uppercase letter • Lowercase letter • Number • Special character
+                                                    </MudText>
+                                                </MudAlert>
+                                            </MudItem>
+                                        }
+                                    </MudGrid>
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    </MudItem>
+
+                    <!-- Action Buttons -->
+                    <MudItem xs="12" Class="mt-4">
+                        <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                            <MudButton Variant="Variant.Outlined"
+                                       StartIcon="@Icons.Material.Filled.Cancel"
+                                       OnClick="@(() => Navigation.NavigateTo($"/users/view/{UserId}"))"
+                                       Disabled="@saving">
+                                Cancel
+                            </MudButton>
+                            <MudButton ButtonType="ButtonType.Submit"
+                                       Variant="Variant.Filled"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       Style="background-color: #D4A853; color: white;"
+                                       Disabled="@saving">
+                                @if (saving)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="margin-right: 8px;" />
+                                    <span>Updating...</span>
+                                }
+                                else
+                                {
+                                    <span>Update User</span>
+                                }
+                            </MudButton>
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+            </EditForm>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int UserId { get; set; }
+
+    private EditUserModel? model;
+    private bool loading = true;
+    private bool loadingRoles = true;
+    private bool saving = false;
+    private bool showPassword = false;
+    private InputType passwordInputType = InputType.Password;
+    private string passwordIcon = Icons.Material.Filled.VisibilityOff;
+
+    private List<Role> roles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+        await LoadUser();
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            loadingRoles = true;
+            var rolesFromDb = await unitOfWork.roleRepository.GetAllAsync();
+            roles = rolesFromDb.ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading roles: {ex.Message}", Severity.Error);
+            // Fallback to default roles if database load fails
+            roles = new List<Role>
+            {
+                new Role { RoleId = 1, RoleName = "Administrator" },
+                new Role { RoleId = 2, RoleName = "Manager" },
+                new Role { RoleId = 3, RoleName = "User" },
+                new Role { RoleId = 4, RoleName = "Staff" }
+            };
+        }
+        finally
+        {
+            loadingRoles = false;
+        }
+    }
+
+    private async Task LoadUser()
+    {
+        try
+        {
+            loading = true;
+            var user = await unitOfWork.userRepository.GetByIdAsync(UserId);
+
+            if (user != null)
+            {
+                model = new EditUserModel
+                    {
+                        UserId = user.UserId,
+                        FullName = user.FullName,
+                        UserNameId = user.UserNameId,
+                        Email = user.Email,
+                        PhoneNumber = user.PhoneNumber,
+                        Location = user.Location,
+                        RoleId = user.RoleId,
+                        IsActive = user.IsActive,
+                        IsVerified = user.IsVerified
+                    };
+            }
+
+            loading = false;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading user: {ex.Message}", Severity.Error);
+            loading = false;
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        if (showPassword)
+        {
+            showPassword = false;
+            passwordInputType = InputType.Password;
+            passwordIcon = Icons.Material.Filled.VisibilityOff;
+        }
+        else
+        {
+            showPassword = true;
+            passwordInputType = InputType.Text;
+            passwordIcon = Icons.Material.Filled.Visibility;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            saving = true;
+            StateHasChanged();
+
+            // Validate password only if it's being changed
+            if (!string.IsNullOrEmpty(model.NewPassword) || !string.IsNullOrEmpty(model.ConfirmNewPassword))
+            {
+                // Check if passwords match
+                if (model.NewPassword != model.ConfirmNewPassword)
+                {
+                    Snackbar.Add("Passwords do not match", Severity.Error);
+                    saving = false;
+                    return;
+                }
+
+                // Check password strength only if a new password is provided
+                if (!string.IsNullOrEmpty(model.NewPassword))
+                {
+                    if (!IsPasswordStrong(model.NewPassword))
+                    {
+                        Snackbar.Add("Password does not meet the requirements", Severity.Error);
+                        saving = false;
+                        return;
+                    }
+                }
+            }
+
+            // Get existing user
+            var user = await unitOfWork.userRepository.GetByIdAsync(UserId);
+            if (user == null)
+            {
+                Snackbar.Add("User not found", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            // Check if email is being changed and if it's already in use
+            if (user.Email != model.Email)
+            {
+                var existingUser = await unitOfWork.userRepository.GetByEmailAsync(model.Email);
+                if (existingUser != null && existingUser.UserId != UserId)
+                {
+                    Snackbar.Add("A user with this email already exists", Severity.Error);
+                    saving = false;
+                    return;
+                }
+            }
+
+            // Update user properties
+            user.FullName = model.FullName;
+            user.UserNameId = model.UserNameId;
+            user.Email = model.Email;
+            user.PhoneNumber = model.PhoneNumber;
+            user.Location = model.Location;
+            user.RoleId = model.RoleId;
+            user.IsActive = model.IsActive;
+            user.IsVerified = model.IsVerified;
+
+            // Update password if provided
+            if (!string.IsNullOrEmpty(model.NewPassword))
+            {
+                user.PasswordHash = HashPassword(model.NewPassword);
+            }
+
+            // Update verification token if verified status changed
+            if (model.IsVerified && !string.IsNullOrEmpty(user.EmailVerificationToken))
+            {
+                user.EmailVerificationToken = null;
+            }
+
+            // Save changes
+            await unitOfWork.userRepository.UpdateAsync(user);
+            await unitOfWork.SaveAsync();
+
+            Snackbar.Add("User updated successfully!", Severity.Success);
+
+            // Navigate back to view page
+            await Task.Delay(500);
+            Navigation.NavigateTo($"/users/view/{UserId}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating user: {ex.Message}", Severity.Error);
+            Console.WriteLine($"Error: {ex}");
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool IsPasswordStrong(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 8)
+            return false;
+
+        bool hasUpperCase = password.Any(char.IsUpper);
+        bool hasLowerCase = password.Any(char.IsLower);
+        bool hasDigit = password.Any(char.IsDigit);
+        bool hasSpecialChar = password.Any(ch => !char.IsLetterOrDigit(ch));
+
+        return hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar;
+    }
+
+    private string HashPassword(string password)
+    {
+        return BCrypt.Net.BCrypt.HashPassword(password);
+    }
+
+    // Model for the edit form
+    public class EditUserModel
+    {
+        public int UserId { get; set; }
+        [Required(ErrorMessage = "User name is required")]
+        [StringLength(100, ErrorMessage = "User name cannot exceed 100 characters")]
+        public string UserNameId { get; set; } = "";
+
+        [Required(ErrorMessage = "Full name is required")]
+        [StringLength(100, ErrorMessage = "Full name cannot exceed 100 characters")]
+        public string FullName { get; set; } = "";
+
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Invalid email address")]
+        [StringLength(100, ErrorMessage = "Email cannot exceed 100 characters")]
+        public string Email { get; set; } = "";
+
+        [StringLength(20, ErrorMessage = "Phone number cannot exceed 20 characters")]
+        public string? PhoneNumber { get; set; }
+
+        [StringLength(100, ErrorMessage = "Location cannot exceed 100 characters")]
+        public string? Location { get; set; }
+
+        // Removed validation attributes - validation is done manually in HandleSubmit
+        public string? NewPassword { get; set; }
+
+        // Removed validation attributes - validation is done manually in HandleSubmit
+        public string? ConfirmNewPassword { get; set; }
+
+        [Required(ErrorMessage = "Role is required")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a role")]
+        public int RoleId { get; set; }
+
+        public bool IsActive { get; set; }
+        public bool IsVerified { get; set; }
+    }
+}

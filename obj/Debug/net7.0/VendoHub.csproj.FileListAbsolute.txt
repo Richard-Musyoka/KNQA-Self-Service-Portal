@@ -1,0 +1,8 @@
+C:\Users\langa\source\repos\VendoHub\VendoHub\obj\Debug\net7.0\VendoHub.csproj.AssemblyReference.cache
+C:\Users\langa\source\repos\VendoHub\VendoHub\obj\Debug\net7.0\VendoHub.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\langa\source\repos\VendoHub\VendoHub\obj\Debug\net7.0\VendoHub.AssemblyInfoInputs.cache
+C:\Users\langa\source\repos\VendoHub\VendoHub\obj\Debug\net7.0\VendoHub.AssemblyInfo.cs
+C:\Users\langa\source\repos\VendoHub\VendoHub\obj\Debug\net7.0\VendoHub.csproj.CoreCompileInputs.cache
+C:\Users\langa\source\repos\VendoHub\VendoHub\obj\Debug\net7.0\VendoHub.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\langa\source\repos\VendoHub\VendoHub\obj\Debug\net7.0\VendoHub.RazorAssemblyInfo.cache
+C:\Users\langa\source\repos\VendoHub\VendoHub\obj\Debug\net7.0\VendoHub.RazorAssemblyInfo.cs

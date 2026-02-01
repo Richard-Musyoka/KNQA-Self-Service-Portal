@@ -1,0 +1,593 @@
+﻿@page "/profile"
+@page "/UserAccount/{UserId:int}"
+@using KNQASelfService.Models;
+@using KNQASelfService.Interfaces;
+@using System.ComponentModel.DataAnnotations;
+@using System.Security.Claims;
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IUnitOfWork unitOfWork
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (loading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+            <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+        </div>
+    }
+    else if (user == null)
+    {
+        <MudAlert Severity="Severity.Error">User not found. Please log in again.</MudAlert>
+    }
+    else
+    {
+        <!-- Force Password Change Alert -->
+        @if (user.ChangePassword)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4" Variant="Variant.Filled" 
+                      Style="background-color: #ff9800;">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <div>
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">Password Change Required</MudText>
+                        <MudText Typo="Typo.body2">
+                            For security reasons, you must change your password before continuing.
+                        </MudText>
+                    </div>
+                </MudStack>
+            </MudAlert>
+        }
+
+        <!-- Page Header -->
+        <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudAvatar Size="Size.Large" Style="background-color: #D4A853; color: white; width: 80px; height: 80px; font-size: 2rem;">
+                    @user.FullName?.Substring(0, 1).ToUpper()
+                </MudAvatar>
+                <div style="flex: 1;">
+                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                        @user.FullName
+                    </MudText>
+                    <MudText Typo="Typo.body1" Style="color: rgba(255,255,255,0.8);">
+                        @user.Email
+                    </MudText>
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-2">
+                        <MudChip T="string" Size="Size.Small" Style="@GetRoleStyle(user.RoleId)">
+                            @GetRoleName(user.RoleId)
+                        </MudChip>
+                        @if (user.IsVerified)
+                        {
+                            <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Verified" Style="background-color: #2196f3; color: white;">
+                                Verified
+                            </MudChip>
+                        }
+                    </MudStack>
+                </div>
+            </MudStack>
+        </MudPaper>
+
+        <MudGrid>
+            <!-- Left Column - Profile Information -->
+            <MudItem xs="12" md="8">
+                <!-- Personal Information Card -->
+                <MudPaper Elevation="3" Class="pa-4 mb-4" Style="border-radius: 12px; border-left: 4px solid #D4A853;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Style="vertical-align: middle; margin-right: 8px;" />
+                            Personal Information
+                        </MudText>
+                        <MudButton Variant="Variant.Text" 
+                                   StartIcon="@Icons.Material.Filled.Edit"
+                                   Style="color: #D4A853;"
+                                   OnClick="@(() => editingProfile = !editingProfile)">
+                            @(editingProfile ? "Cancel" : "Edit")
+                        </MudButton>
+                    </MudStack>
+                    <MudDivider Class="mb-3" />
+
+                    @if (editingProfile)
+                    {
+                        <EditForm Model="@profileModel" OnValidSubmit="UpdateProfile">
+                            <DataAnnotationsValidator />
+                            <MudGrid>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="profileModel.FullName"
+                                                  Label="Full Name"
+                                                  Variant="Variant.Outlined"
+                                                  For="@(() => profileModel.FullName)"
+                                                  Margin="Margin.Dense" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="profileModel.Email"
+                                                  Label="Email"
+                                                  Variant="Variant.Outlined"
+                                                  For="@(() => profileModel.Email)"
+                                                  Margin="Margin.Dense"
+                                                  Disabled="true" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="profileModel.PhoneNumber"
+                                                  Label="Phone Number"
+                                                  Variant="Variant.Outlined"
+                                                  For="@(() => profileModel.PhoneNumber)"
+                                                  Margin="Margin.Dense" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="profileModel.Location"
+                                                  Label="Location"
+                                                  Variant="Variant.Outlined"
+                                                  For="@(() => profileModel.Location)"
+                                                  Margin="Margin.Dense" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                                        <MudButton Variant="Variant.Outlined"
+                                                   OnClick="@(() => editingProfile = false)">
+                                            Cancel
+                                        </MudButton>
+                                        <MudButton ButtonType="ButtonType.Submit"
+                                                   Variant="Variant.Filled"
+                                                   Style="background-color: #D4A853; color: white;"
+                                                   Disabled="@savingProfile">
+                                            @if (savingProfile)
+                                            {
+                                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="margin-right: 8px;" />
+                                                <span>Saving...</span>
+                                            }
+                                            else
+                                            {
+                                                <span>Save Changes</span>
+                                            }
+                                        </MudButton>
+                                    </MudStack>
+                                </MudItem>
+                            </MudGrid>
+                        </EditForm>
+                    }
+                    else
+                    {
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudStack Spacing="1" Class="mb-3">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Full Name</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 600;">@user.FullName</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudStack Spacing="1" Class="mb-3">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Email</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 600;">@user.Email</MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudStack Spacing="1" Class="mb-3">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Phone Number</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 600;">
+                                        @(string.IsNullOrEmpty(user.PhoneNumber) ? "Not provided" : user.PhoneNumber)
+                                    </MudText>
+                                </MudStack>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudStack Spacing="1" Class="mb-3">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Location</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 600;">
+                                        @(string.IsNullOrEmpty(user.Location) ? "Not provided" : user.Location)
+                                    </MudText>
+                                </MudStack>
+                            </MudItem>
+                        </MudGrid>
+                    }
+                </MudPaper>
+
+                <!-- Change Password Card -->
+                <MudPaper Elevation="3" Class="pa-4" Style="@($"border-radius: 12px; border-left: 4px solid {(user.ChangePassword ? "#ff9800" : "#00286E")}; margin-bottom:20px")">
+
+                    <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600; margin-bottom: 16px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Lock" Style="vertical-align: middle; margin-right: 8px;" />
+                        Change Password
+                        @if (user.ChangePassword)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Style="margin-left: 8px;">Required</MudChip>
+                        }
+                    </MudText>
+                    <MudDivider Class="mb-3" />
+
+                    <EditForm Model="@passwordModel" OnValidSubmit="ChangePasswordSubmit">
+                        <DataAnnotationsValidator />
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="passwordModel.CurrentPassword"
+                                              Label="Current Password"
+                                              Variant="Variant.Outlined"
+                                              InputType="@currentPasswordInputType"
+                                              For="@(() => passwordModel.CurrentPassword)"
+                                              Adornment="Adornment.End"
+                                              AdornmentIcon="@currentPasswordIcon"
+                                              OnAdornmentClick="ToggleCurrentPasswordVisibility" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="passwordModel.NewPassword"
+                                              Label="New Password"
+                                              Variant="Variant.Outlined"
+                                              InputType="@newPasswordInputType"
+                                              For="@(() => passwordModel.NewPassword)"
+                                              Adornment="Adornment.End"
+                                              AdornmentIcon="@newPasswordIcon"
+                                              OnAdornmentClick="ToggleNewPasswordVisibility" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="passwordModel.ConfirmNewPassword"
+                                              Label="Confirm New Password"
+                                              Variant="Variant.Outlined"
+                                              InputType="@newPasswordInputType"
+                                              For="@(() => passwordModel.ConfirmNewPassword)" />
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudAlert Severity="Severity.Info" Dense="true">
+                                    <MudText Typo="Typo.caption">
+                                        <strong>Password Requirements:</strong>
+                                        Minimum 8 characters • Uppercase letter • Lowercase letter • Number • Special character
+                                    </MudText>
+                                </MudAlert>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                                    <MudButton ButtonType="ButtonType.Submit"
+                                               Variant="Variant.Filled"
+                                               StartIcon="@Icons.Material.Filled.Save"
+                                               Style="background-color: #D4A853; color: white;"
+                                               Disabled="@changingPassword">
+                                        @if (changingPassword)
+                                        {
+                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="margin-right: 8px;" />
+                                            <span>Changing...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Change Password</span>
+                                        }
+                                    </MudButton>
+                                </MudStack>
+                            </MudItem>
+                        </MudGrid>
+                    </EditForm>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Right Column - Account Info -->
+            <MudItem xs="12" md="4">
+                <!-- Account Stats -->
+                <MudPaper Elevation="3" Class="pa-4 mb-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+                    <MudText Typo="Typo.h6" Style="color: white; font-weight: 600; margin-bottom: 16px;">
+                        Account Information
+                    </MudText>
+                    <MudDivider Class="mb-3" Style="background-color: rgba(255,255,255,0.2);" />
+
+                    <MudStack Spacing="3">
+                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.7);">User Name</MudText>
+                            <MudText Typo="Typo.h6" Style="color: white; font-weight: 700;">@user.UserNameId</MudText>
+                        </MudPaper>
+
+                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.7);">Role</MudText>
+                            <MudText Typo="Typo.h6" Style="color: white; font-weight: 700;">@GetRoleName(user.RoleId)</MudText>
+                        </MudPaper>
+
+                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.7);">Member Since</MudText>
+                            <MudText Typo="Typo.body1" Style="color: white; font-weight: 700;">
+                                @user.CreatedAt.ToString("MMM dd, yyyy")
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.6);">
+                                @GetTimeAgo(user.CreatedAt)
+                            </MudText>
+                        </MudPaper>
+
+                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.7);">Account Status</MudText>
+                            <MudStack Row="true" Spacing="1" Class="mt-1">
+                                @if (user.IsActive)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                                }
+                                @if (user.IsVerified)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Info">Verified</MudChip>
+                                }
+                            </MudStack>
+                        </MudPaper>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public int? UserId { get; set; }
+
+    private User? user;
+    private bool loading = true;
+    private bool editingProfile = false;
+    private bool savingProfile = false;
+    private bool changingPassword = false;
+
+    private ProfileUpdateModel profileModel = new();
+    private ChangePasswordModel passwordModel = new();
+
+    private bool showCurrentPassword = false;
+    private bool showNewPassword = false;
+    private InputType currentPasswordInputType = InputType.Password;
+    private InputType newPasswordInputType = InputType.Password;
+    private string currentPasswordIcon = Icons.Material.Filled.VisibilityOff;
+    private string newPasswordIcon = Icons.Material.Filled.VisibilityOff;
+
+    private Dictionary<int, string> roles = new()
+    {
+        { 1, "Administrator" },
+        { 2, "Manager" },
+        { 3, "User" },
+        { 4, "Staff" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+        await LoadUserProfile();
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            var rolesFromDb = await unitOfWork.roleRepository.GetAllAsync();
+            roles = rolesFromDb.ToDictionary(r => r.RoleId, r => r.RoleName);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading roles: {ex.Message}");
+        }
+    }
+
+    private async Task LoadUserProfile()
+    {
+        try
+        {
+            loading = true;
+
+            // Get current user ID from authentication
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var userClaims = authState.User;
+
+            int currentUserId;
+            if (UserId.HasValue)
+            {
+                currentUserId = UserId.Value;
+            }
+            else
+            {
+                // Get from claims or session
+                var userIdClaim = userClaims.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                  ?? userClaims.FindFirst("UserId")?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out currentUserId))
+                {
+                    Snackbar.Add("Unable to identify user. Please log in again.", Severity.Error);
+                    Navigation.NavigateTo("/login");
+                    return;
+                }
+            }
+
+            user = await unitOfWork.userRepository.GetByIdAsync(currentUserId);
+
+            if (user != null)
+            {
+                profileModel = new ProfileUpdateModel
+                {
+                    FullName = user.FullName,
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber,
+                    Location = user.Location
+                };
+            }
+
+            loading = false;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading profile: {ex.Message}", Severity.Error);
+            loading = false;
+        }
+    }
+
+    private void ToggleCurrentPasswordVisibility()
+    {
+        if (showCurrentPassword)
+        {
+            showCurrentPassword = false;
+            currentPasswordInputType = InputType.Password;
+            currentPasswordIcon = Icons.Material.Filled.VisibilityOff;
+        }
+        else
+        {
+            showCurrentPassword = true;
+            currentPasswordInputType = InputType.Text;
+            currentPasswordIcon = Icons.Material.Filled.Visibility;
+        }
+    }
+
+    private void ToggleNewPasswordVisibility()
+    {
+        if (showNewPassword)
+        {
+            showNewPassword = false;
+            newPasswordInputType = InputType.Password;
+            newPasswordIcon = Icons.Material.Filled.VisibilityOff;
+        }
+        else
+        {
+            showNewPassword = true;
+            newPasswordInputType = InputType.Text;
+            newPasswordIcon = Icons.Material.Filled.Visibility;
+        }
+    }
+
+    private async Task UpdateProfile()
+    {
+        try
+        {
+            savingProfile = true;
+            StateHasChanged();
+
+            user.FullName = profileModel.FullName;
+            user.PhoneNumber = profileModel.PhoneNumber;
+            user.Location = profileModel.Location;
+
+            await unitOfWork.userRepository.UpdateAsync(user);
+            await unitOfWork.SaveAsync();
+
+            Snackbar.Add("Profile updated successfully!", Severity.Success);
+            editingProfile = false;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating profile: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            savingProfile = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ChangePasswordSubmit()
+    {
+        try
+        {
+            changingPassword = true;
+            StateHasChanged();
+
+            // Verify current password
+            if (!BCrypt.Net.BCrypt.Verify(passwordModel.CurrentPassword, user.PasswordHash))
+            {
+                Snackbar.Add("Current password is incorrect", Severity.Error);
+                changingPassword = false;
+                return;
+            }
+
+            // Validate new password strength
+            if (!IsPasswordStrong(passwordModel.NewPassword))
+            {
+                Snackbar.Add("New password does not meet the requirements", Severity.Error);
+                changingPassword = false;
+                return;
+            }
+
+            // Update password
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(passwordModel.NewPassword);
+            user.ChangePassword = false; // Reset the flag after password change
+
+            await unitOfWork.userRepository.UpdateAsync(user);
+            await unitOfWork.SaveAsync();
+
+            Snackbar.Add("Password changed successfully!", Severity.Success);
+
+            // Clear password fields
+            passwordModel = new ChangePasswordModel();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error changing password: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            changingPassword = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool IsPasswordStrong(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 8)
+            return false;
+
+        bool hasUpperCase = password.Any(char.IsUpper);
+        bool hasLowerCase = password.Any(char.IsLower);
+        bool hasDigit = password.Any(char.IsDigit);
+        bool hasSpecialChar = password.Any(ch => !char.IsLetterOrDigit(ch));
+
+        return hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar;
+    }
+
+    private string GetRoleName(int roleId)
+    {
+        return roles.ContainsKey(roleId) ? roles[roleId] : "Unknown";
+    }
+
+    private string GetRoleStyle(int roleId)
+    {
+        return roleId switch
+        {
+            1 => "background-color: #00286E; color: white;",
+            2 => "background-color: #0288d1; color: white;",
+            3 => "background-color: #D4A853; color: white;",
+            4 => "background-color: #4caf50; color: white;",
+            _ => "background-color: #999; color: white;"
+        };
+    }
+
+    private string GetTimeAgo(DateTime date)
+    {
+        var timeSpan = DateTime.Now - date;
+
+        if (timeSpan.TotalDays > 365)
+            return $"{(int)(timeSpan.TotalDays / 365)} year(s) ago";
+        if (timeSpan.TotalDays > 30)
+            return $"{(int)(timeSpan.TotalDays / 30)} month(s) ago";
+        if (timeSpan.TotalDays > 1)
+            return $"{(int)timeSpan.TotalDays} day(s) ago";
+        if (timeSpan.TotalHours > 1)
+            return $"{(int)timeSpan.TotalHours} hour(s) ago";
+        if (timeSpan.TotalMinutes > 1)
+            return $"{(int)timeSpan.TotalMinutes} minute(s) ago";
+
+        return "Just now";
+    }
+
+    // Models for forms
+    public class ProfileUpdateModel
+    {
+        [Required(ErrorMessage = "Full name is required")]
+        [StringLength(100)]
+        public string FullName { get; set; } = "";
+
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [StringLength(20)]
+        public string? PhoneNumber { get; set; }
+
+        [StringLength(100)]
+        public string? Location { get; set; }
+    }
+
+    public class ChangePasswordModel
+    {
+        [Required(ErrorMessage = "Current password is required")]
+        public string CurrentPassword { get; set; } = "";
+
+        [Required(ErrorMessage = "New password is required")]
+        [StringLength(100, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters")]
+        public string NewPassword { get; set; } = "";
+
+        [Required(ErrorMessage = "Please confirm your new password")]
+        [Compare(nameof(NewPassword), ErrorMessage = "Passwords do not match")]
+        public string ConfirmNewPassword { get; set; } = "";
+    }
+}

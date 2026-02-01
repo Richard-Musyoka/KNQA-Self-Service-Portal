@@ -1,0 +1,425 @@
+﻿@page "/login"
+@layout LoginLayout
+@using KNQASelfService.Interfaces.UserManagement
+@using KNQASelfService.Models
+@using KNQASelfService.Interfaces
+@using System.ComponentModel.DataAnnotations
+@implements IAsyncDisposable
+@inject IUnitOfWork unitOfWork
+@inject IOtpService otpService
+@inject IEmailService emailService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Elevation="3" Class="pa-6" Style="border-radius: 12px; border-top: 4px solid #D4A853;">
+
+        <!-- Logo/Header -->
+        <div style="text-align: center; margin-bottom: 24px;">
+            <MudIcon Icon="@Icons.Material.Filled.Lock"
+                     Style="color: #00286E; font-size: 64px;" />
+            <MudText Typo="Typo.h4" Style="color: #00286E; font-weight: 600; margin-top: 16px;">
+                KNQA Login
+            </MudText>
+            <MudText Typo="Typo.body2" Style="color: #666;">
+                Kenya National Qualifications Authority
+            </MudText>
+        </div>
+
+        @if (!otpSent)
+        {
+            <!-- Step 1: Email & Password -->
+            <EditForm Model="loginModel" OnValidSubmit="SendOtp">
+                <DataAnnotationsValidator />
+
+                <MudText Typo="Typo.h6" Style="color: #00286E; margin-bottom: 16px;">
+                    Step 1: Enter Credentials
+                </MudText>
+
+                <MudTextField T="string"
+                              @bind-Value="loginModel.Email"
+                              Label="Email"
+                              For="@(() => loginModel.Email)"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Email"
+                              Immediate="true"
+                              Class="mb-4"
+                              Disabled="@sendingOtp" />
+
+                <MudTextField T="string"
+                              @bind-Value="loginModel.Password"
+                              Label="Password"
+                              InputType="InputType.Password"
+                              For="@(() => loginModel.Password)"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Lock"
+                              Immediate="true"
+                              Class="mb-4"
+                              Disabled="@sendingOtp" />
+
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           StartIcon="@Icons.Material.Filled.Send"
+                           ButtonType="ButtonType.Submit"
+                           FullWidth="true"
+                           Disabled="@sendingOtp">
+                    @if (sendingOtp)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="margin-right: 8px;" />
+                        <span>Sending OTP...</span>
+                    }
+                    else
+                    {
+                        <span>Send OTP</span>
+                    }
+                </MudButton>
+            </EditForm>
+        }
+        else
+        {
+            <!-- Step 2: OTP Verification -->
+            <EditForm Model="otpModel" OnValidSubmit="VerifyOtpAndLogin">
+                <DataAnnotationsValidator />
+
+                <MudAlert Severity="Severity.Success" Dense="true" Class="mb-4">
+                    <MudText Typo="Typo.body2">
+                        An OTP has been sent to <strong>@loginModel.Email</strong>
+                    </MudText>
+                </MudAlert>
+
+                <MudText Typo="Typo.h6" Style="color: #00286E; margin-bottom: 16px;">
+                    Step 2: Enter OTP
+                </MudText>
+
+                <MudTextField T="string"
+                              @bind-Value="otpModel.OtpCode"
+                              Label="Enter 6-Digit OTP"
+                              For="@(() => otpModel.OtpCode)"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Pin"
+                              MaxLength="6"
+                              Immediate="true"
+                              Class="mb-4"
+                              Style="text-align: center; font-size: 24px; letter-spacing: 8px;"
+                              Disabled="@verifyingOtp" />
+
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="GoBack"
+                               Style="color: #00286E; border-color: #00286E;"
+                               Disabled="@verifyingOtp">
+                        Back
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Filled"
+                               Style="background-color: #00286E; color: white; flex: 1;"
+                               StartIcon="@Icons.Material.Filled.Login"
+                               ButtonType="ButtonType.Submit"
+                               Disabled="@verifyingOtp">
+                        @if (verifyingOtp)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="margin-right: 8px;" />
+                            <span>Verifying...</span>
+                        }
+                        else
+                        {
+                            <span>Verify & Login</span>
+                        }
+                    </MudButton>
+                </MudStack>
+
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mt-3">
+                    <MudText Typo="Typo.caption" Style="color: #666;">
+                        Didn't receive OTP?
+                    </MudText>
+                    <MudButton Variant="Variant.Text"
+                               Size="Size.Small"
+                               Style="color: #D4A853;"
+                               OnClick="ResendOtp"
+                               Disabled="@(resendCountdown > 0 || sendingOtp)">
+                        @if (resendCountdown > 0)
+                        {
+                            <span>Resend in @resendCountdown s</span>
+                        }
+                        else
+                        {
+                            <span>Resend OTP</span>
+                        }
+                    </MudButton>
+                </MudStack>
+            </EditForm>
+        }
+
+        @if (!string.IsNullOrEmpty(error))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-4">
+                @error
+            </MudAlert>
+        }
+
+        <MudDivider Class="my-4" />
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [CascadingParameter]
+    public LoginLayout? Layout { get; set; }
+
+    // ============================================================================
+    // PROPERTIES & FIELDS
+    // ============================================================================
+
+    private LoginModel loginModel = new();
+    private OtpModel otpModel = new();
+    private string? error;
+    private bool otpSent = false;
+    private bool sendingOtp = false;
+    private bool verifyingOtp = false;
+    private int resendCountdown = 0;
+
+    // Fixed: Changed from System.Threading.Timer to CancellationTokenSource
+    // This ensures all operations stay on the Blazor synchronization context
+    private CancellationTokenSource? countdownCts;
+
+    // ============================================================================
+    // SEND OTP METHOD
+    // ============================================================================
+
+    /// <summary>
+    /// Verifies user credentials and sends OTP email.
+    /// Initiates the countdown for resending OTP.
+    /// </summary>
+    private async Task SendOtp()
+    {
+        error = null;
+        sendingOtp = true;
+
+        try
+        {
+            // Step 1: Verify user credentials
+            var user = await unitOfWork.userRepository.GetByEmailAsync(loginModel.Email);
+
+            if (user == null || !BCrypt.Net.BCrypt.Verify(loginModel.Password, user.PasswordHash))
+            {
+                error = "Invalid email or password.";
+                sendingOtp = false;
+                return;
+            }
+
+            // Step 2: Check if account is active
+            if (!user.IsActive)
+            {
+                error = "Your account has been deactivated. Please contact support.";
+                sendingOtp = false;
+                return;
+            }
+
+            // Step 3: Generate OTP and send email
+            var otpCode = await otpService.GenerateOtpAsync(loginModel.Email);
+            await emailService.SendOtpEmailAsync(loginModel.Email, user.FullName, otpCode);
+
+            // Step 4: Update UI state and start countdown
+            otpSent = true;
+
+            // FIXED: Now properly awaits the async countdown method
+            // This keeps everything on the Blazor synchronization context
+            await StartResendCountdownAsync();
+        }
+        catch (Exception ex)
+        {
+            error = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            sendingOtp = false;
+            StateHasChanged();
+        }
+    }
+
+    // ============================================================================
+    // RESEND OTP METHOD
+    // ============================================================================
+
+    /// <summary>
+    /// Allows user to resend OTP if countdown has expired.
+    /// </summary>
+    private async Task ResendOtp()
+    {
+        if (resendCountdown > 0) return;
+
+        await SendOtp();
+    }
+
+    // ============================================================================
+    // COUNTDOWN TIMER - FIXED VERSION
+    // ============================================================================
+
+    /// <summary>
+    /// Manages the resend OTP countdown.
+    /// FIXED: Uses Task.Delay instead of System.Threading.Timer
+    /// This ensures all operations occur on the Blazor synchronization context,
+    /// preventing DbContext concurrency errors.
+    /// </summary>
+    private async Task StartResendCountdownAsync()
+    {
+        // Cancel any existing countdown to prevent overlapping timers
+        countdownCts?.Cancel();
+        countdownCts = new CancellationTokenSource();
+
+        resendCountdown = 60; // 60 seconds cooldown
+
+        try
+        {
+            // Loop counts down from 60 to 1
+            for (int i = 60; i > 0; i--)
+            {
+                // Check if countdown was cancelled (e.g., user clicked Back)
+                countdownCts.Token.ThrowIfCancellationRequested();
+
+                // Wait 1 second on the Blazor synchronization context
+                // This doesn't block threads; other async operations can run
+                await Task.Delay(1000, countdownCts.Token);
+
+                // Update countdown value
+                resendCountdown = i - 1;
+
+                // Trigger UI update on the Blazor context
+                // This is now safe because we're not on a thread pool thread
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when countdown is cancelled (e.g., user clicked Back)
+            // Silently handle - countdown stops as intended
+        }
+    }
+
+    // ============================================================================
+    // OTP VERIFICATION AND LOGIN
+    // ============================================================================
+
+    /// <summary>
+    /// Validates the OTP entered by the user and performs login if valid.
+    /// </summary>
+    private async Task VerifyOtpAndLogin()
+    {
+        error = null;
+        verifyingOtp = true;
+
+        try
+        {
+            // Step 1: Validate OTP
+            var isValid = await otpService.ValidateOtpAsync(loginModel.Email, otpModel.OtpCode);
+
+            if (!isValid)
+            {
+                error = "Invalid or expired OTP. Please try again.";
+                verifyingOtp = false;
+                return;
+            }
+
+            // Step 2: Cancel countdown if still running
+            countdownCts?.Cancel();
+
+            // Step 3: Perform login via JavaScript
+            var success = await JS.InvokeAsync<bool>("loginViaFetch", loginModel.Email, loginModel.Password);
+
+            if (success)
+            {
+                // Step 4: Extract return URL and navigate
+                var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+                var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+                var returnUrl = query.TryGetValue("returnUrl", out var r) ? r.ToString() : string.Empty;
+
+                Navigation.NavigateTo(string.IsNullOrEmpty(returnUrl) ? "/" : returnUrl, forceLoad: true);
+            }
+            else
+            {
+                error = "Login failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            verifyingOtp = false;
+            StateHasChanged();
+        }
+    }
+
+    // ============================================================================
+    // NAVIGATION - GO BACK
+    // ============================================================================
+
+    /// <summary>
+    /// Returns to the OTP input step.
+    /// Properly cancels the countdown timer.
+    /// </summary>
+    private void GoBack()
+    {
+        otpSent = false;
+        otpModel = new OtpModel();
+        error = null;
+
+        // FIXED: Cancel the countdown instead of disposing a timer
+        // This immediately stops the async countdown task
+        countdownCts?.Cancel();
+        resendCountdown = 0;
+    }
+
+    // ============================================================================
+    // CLEANUP & DISPOSAL
+    // ============================================================================
+
+    /// <summary>
+    /// Implements IAsyncDisposable for proper cleanup.
+    /// FIXED: Changed from void Dispose() to async ValueTask DisposeAsync()
+    /// This is the Blazor-recommended pattern for async cleanup.
+    /// </summary>
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        // Cancel any ongoing countdown
+        countdownCts?.Cancel();
+
+        // Dispose of the cancellation token source
+        countdownCts?.Dispose();
+
+        // Allow any pending operations to complete
+        await Task.CompletedTask;
+    }
+
+    // ============================================================================
+    // VIEW MODELS
+    // ============================================================================
+
+    /// <summary>
+    /// Login form model with validation.
+    /// </summary>
+    public class LoginModel
+    {
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Invalid email address")]
+        public string Email { get; set; } = "";
+
+        [Required(ErrorMessage = "Password is required")]
+        public string Password { get; set; } = "";
+    }
+
+    /// <summary>
+    /// OTP verification model with validation.
+    /// </summary>
+    public class OtpModel
+    {
+        [Required(ErrorMessage = "OTP is required")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "OTP must be 6 digits")]
+        [RegularExpression(@"^\d{6}$", ErrorMessage = "OTP must be 6 digits")]
+        public string OtpCode { get; set; } = "";
+    }
+}

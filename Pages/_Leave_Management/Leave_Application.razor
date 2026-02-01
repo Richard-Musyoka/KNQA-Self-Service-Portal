@@ -1,0 +1,1029 @@
+﻿@page "/leave-application"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IBusinessCentralService BCService
+@inject ICurrentUserService CurrentUserService
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Leave Applications</PageTitle>
+
+<MudLayout>
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="600px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                @(isEditMode ? "Edit Leave Application" : "New Leave Application")
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@formValid">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.LeaveCode"
+                                   Label="Leave Type *"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   OnValueChanged="@OnLeaveTypeChanged">
+                            @if (leaveTypes != null && leaveTypes.Count > 0)
+                            {
+                                @foreach (var type in leaveTypes.Where(lt => lt.Status == "Active"))
+                                {
+                                    <MudSelectItem Value="@type.Code">
+                                        @type.Description - @(type.UnlimitedDays ? "Unlimited" : $"{type.Days} days")
+                                    </MudSelectItem>
+                                }
+                            }
+                            else
+                            {
+                                <MudSelectItem Value="@("ANNUAL")">Annual Leave</MudSelectItem>
+                                <MudSelectItem Value="@("SICK")">Sick Leave</MudSelectItem>
+                                <MudSelectItem Value="@("MATERNITY")">Maternity Leave</MudSelectItem>
+                                <MudSelectItem Value="@("PATERNITY")">Paternity Leave</MudSelectItem>
+                                <MudSelectItem Value="@("COMPASSIONATE")">Compassionate Leave</MudSelectItem>
+                                <MudSelectItem Value="@("STUDY")">Study Leave</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudDatePicker @bind-Date="startDate"
+                                       Label="Start Date *"
+                                       Variant="Variant.Outlined"
+                                       Required="true"
+                                       MinDate="DateTime.Today" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.DaysApplied"
+                                      Label="Days Applied *"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number"
+                                      Min="1"
+                                      Required="true" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.DutiesTakenOverBy"
+                                   Label="Duties Taken Over By *"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   Disabled="@(employees.Count == 0)"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @if (employees != null)
+                            {
+                                @foreach (var emp in employees.Where(e => e.No != currentEmployeeNo && e.Status == "Active"))
+                                {
+                                    <MudSelectItem Value="@emp.No">@emp.FullName (@emp.No)</MudSelectItem>
+                                }
+                            }
+                        </MudSelect>
+                        @if (employees == null || employees.Count == 0)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Warning">Loading employees list...</MudText>
+                        }
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.Reason"
+                                      Label="Reason for Leave"
+                                      Variant="Variant.Outlined"
+                                      Lines="3" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.TelephoneNo"
+                                      Label="Telephone No"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.AlternatePhoneNo"
+                                      Label="Alternate Phone No"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-3"
+                                  Elevation="0"
+                                  Style="background-color: #f5f5f5; border-left: 4px solid #D4A853;">
+                            <MudText Typo="Typo.body2" Style="color: #00286E; margin-bottom: 8px;">
+                                <strong>Leave Balance Summary</strong>
+                            </MudText>
+
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Entitlement:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(selectedLeaveTypeUnlimited ? "Unlimited" : $"{selectedLeaveTypeDays} days")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Taken:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #f44336;">
+                                        <strong>@(selectedLeaveTypeUnlimited ? "N/A" : $"{leaveTaken} days")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudDivider Style="margin: 8px 0;" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Available Balance:</MudText>
+                                    <MudText Typo="Typo.h6" Style="@GetBalanceStyle(currentEmployeeLeaveBalance)">
+                                        <strong>@(selectedLeaveTypeUnlimited ? "Unlimited" : $"{currentEmployeeLeaveBalance} days")</strong>
+                                    </MudText>
+                                </MudItem>
+
+                                @if (GetPendingDaysForLeaveType(formModel.LeaveCode) > 0)
+                                {
+                                    <MudItem xs="12">
+                                        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                                            You have <strong>@GetPendingDaysForLeaveType(formModel.LeaveCode) day(s)</strong> in pending applications for this leave type
+                                        </MudAlert>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+
+                            @if (formModel.DaysApplied > 0 && !selectedLeaveTypeUnlimited)
+                            {
+                                var pendingForThisType = GetPendingDaysForLeaveType(formModel.LeaveCode);
+                                var totalPending = pendingForThisType + formModel.DaysApplied;
+                                var remainingAfterAll = currentEmployeeLeaveBalance - totalPending;
+
+                                <MudDivider Style="margin: 12px 0;" />
+                                <MudText Typo="Typo.caption" Style="color: #666;">Applying for:</MudText>
+                                <MudText Typo="Typo.body1" Style="color: #00286E;"><strong>@formModel.DaysApplied days</strong></MudText>
+
+                                @if (pendingForThisType > 0)
+                                {
+                                    <MudText Typo="Typo.caption" Style="color: #666;" Class="mt-2">
+                                        Total with pending: <strong>@totalPending days</strong>
+                                    </MudText>
+                                }
+
+                                @if (totalPending > currentEmployeeLeaveBalance)
+                                {
+                                    <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">
+                                        <strong>Insufficient Balance!</strong><br />
+                                        You need @(totalPending - currentEmployeeLeaveBalance) more day(s).
+                                        @if (pendingForThisType > 0)
+                                        {
+                                            <br />
+                                            <small>(Including @pendingForThisType pending days)</small>
+                                        }
+                                    </MudAlert>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Style="color: #4caf50;" Class="mt-2">
+                                        ✓ Balance remaining after: <strong>@remainingAfterAll days</strong>
+                                    </MudText>
+                                }
+                            }
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => SaveLeaveApplication())"
+                           Disabled="@(!formValid || saving)">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Saving...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Save" Size="Size.Small" />
+                        <span class="ms-2">@(isEditMode ? "Update" : "Submit")</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.EventNote" Style="margin-right: 12px; vertical-align: middle;" />
+                            My Leave Applications
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(currentEmployeeName))
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                @currentEmployeeName (@currentEmployeeNo)
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudButton Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   Style="background-color: #D4A853; color: white; font-weight: 600;"
+                                   Size="Size.Large"
+                                   OnClick="OpenCreateDrawer">
+                            New Application
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            @if (loading)
+            {
+                <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => errorMessage = null"
+                          Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+            else
+            {
+                @if (!string.IsNullOrEmpty(successMessage))
+                {
+                    <MudAlert Severity="Severity.Success"
+                              Variant="Variant.Filled"
+                              CloseIcon="@Icons.Material.Filled.Close"
+                              CloseIconClicked="() => successMessage = null"
+                              Class="mb-4">
+                        @successMessage
+                    </MudAlert>
+                }
+
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Applications</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@leaveApplications.Count</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Open</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@GetCountByStatus("Open")</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" Size="Size.Large" Style="color: rgba(255,255,255,0.7);" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Approved</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@GetCountByStatus("Approved")</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Rejected</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@GetCountByStatus("Rejected")</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Cancel" Size="Size.Large" Style="color: rgba(255,255,255,0.7);" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853; margin-bottom: 20px">
+                    <MudTable Items="@FilteredLeaveApplications"
+                              Hover="true"
+                              Breakpoint="Breakpoint.Sm"
+                              Dense="true"
+                              Striped="true"
+                              Style="border-radius: 12px;">
+                        <ToolBarContent>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.FilterList" Style="color: #00286E;" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">Leave Applications</MudText>
+                                    <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">@leaveApplications.Count applications</MudChip>
+                                </MudStack>
+
+                                <MudStack Row="true" Spacing="2">
+                                    <MudTextField @bind-Value="searchTerm"
+                                                  Placeholder="Search applications..."
+                                                  Adornment="Adornment.Start"
+                                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                                  IconSize="Size.Medium"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  DebounceInterval="300"
+                                                  Style="min-width: 300px;"
+                                                  Class="mt-0">
+                                    </MudTextField>
+
+                                    <MudSelect @bind-Value="statusFilter"
+                                               Placeholder="Status"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Status</MudSelectItem>
+                                        <MudSelectItem Value="@("Open")">Open</MudSelectItem>
+                                        <MudSelectItem Value="@("Approved")">Approved</MudSelectItem>
+                                        <MudSelectItem Value="@("Rejected")">Rejected</MudSelectItem>
+                                    </MudSelect>
+
+                                    <MudSelect @bind-Value="leaveTypeFilter"
+                                               Placeholder="Leave Type"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Types</MudSelectItem>
+                                        @foreach (var type in GetUniqueLeaveTypes())
+                                        {
+                                            <MudSelectItem Value="@type">@type</MudSelectItem>
+                                        }
+                                    </MudSelect>
+
+                                    <MudTooltip Text="Clear Filters">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                                       Style="color: #666; border: 1px solid #666;"
+                                                       OnClick="ClearFilters" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Refresh">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                                       Style="color: #00286E; border: 1px solid #00286E;"
+                                                       OnClick="RefreshList" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudStack>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>App No.</MudTh>
+                            <MudTh>Leave Type</MudTh>
+                            <MudTh>Period</MudTh>
+                            <MudTh>Days</MudTh>
+                            <MudTh>Balance</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Applied</MudTh>
+                            <MudTh Style="text-align: center;">Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="App No.">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">#@context.ApplicationNo</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Leave Type">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #D4A853; color: white;">@context.LeaveCode</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Period">
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.caption">
+                                        <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Style="color: #D4A853;" />
+                                        @ParseDate(context.StartDate)
+                                    </MudText>
+                                    <MudText Typo="Typo.caption">
+                                        <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Size="Size.Small" Style="color: #D4A853;" />
+                                        @ParseDate(context.EndDate)
+                                    </MudText>
+                                </MudStack>
+                            </MudTd>
+                            <MudTd DataLabel="Days">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">@context.DaysApplied</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Balance">
+                                <MudText Typo="Typo.body2" Style="@GetBalanceStyle(context.LeaveBalance)">
+                                    <strong>@context.LeaveBalance</strong>
+                                </MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                @GetStatusChip(context.Status)
+                            </MudTd>
+                            <MudTd DataLabel="Applied">
+                                <MudText Typo="Typo.body2">@ParseDate(context.ApplicationDate)</MudText>
+                                <MudText Typo="Typo.caption" Style="color: #999;">@GetTimeAgo(context.ApplicationDate)</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Actions" Style="text-align: center;">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Style="color: #00286E;"
+                                                       OnClick="() => ViewDetails(context)" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="@(context.Status == "Open" ? "Edit Application" : "Cannot edit - application already submitted")">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Size="Size.Small"
+                                                       Style="@(context.Status == "Open" ? "color: #D4A853;" : "color: #ccc;")"
+                                                       OnClick="() => OpenEditDrawer(context)"
+                                                       Disabled="@(context.Status != "Open")" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="@(context.Status == "Open" ? "Delete Application" : "Cannot delete - application already submitted")">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Style="@(context.Status == "Open" ? "color: #f44336;" : "color: #ccc;")"
+                                                       OnClick="() => DeleteLeave(context)"
+                                                       Disabled="@(context.Status != "Open")" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div style="text-align: center; padding: 60px 20px;">
+                                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No leave applications found</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria or create a new application</MudText>
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private List<LeaveApplication> leaveApplications = new();
+    private List<Employee> employees = new();
+    private List<LeaveType> leaveTypes = new();
+    private bool loading = true;
+    private string errorMessage;
+    private string successMessage;
+    private string searchTerm = "";
+    private string statusFilter = "";
+    private string leaveTypeFilter = "";
+    private string currentEmployeeNo = "";
+    private string currentEmployeeName = "";
+
+    // Drawer variables
+    private bool drawerOpen = false;
+    private bool isEditMode = false;
+    private bool saving = false;
+    private MudForm form;
+    private bool formValid;
+    private LeaveApplicationCreate formModel = new();
+    private DateTime? startDate;
+    private int currentEmployeeLeaveBalance = 0;
+    private int leaveEntitlement = 0;
+    private int leaveTaken = 0;
+    private int selectedLeaveTypeDays = 0;
+    private bool selectedLeaveTypeUnlimited = false;
+
+    // Store the application being edited
+    private LeaveApplication editingApplication = null;
+
+    private IEnumerable<LeaveApplication> FilteredLeaveApplications
+    {
+        get
+        {
+            var filtered = leaveApplications.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                filtered = filtered.Where(l =>
+                    (l.ApplicationNo?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (l.LeaveCode?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                filtered = filtered.Where(l => l.Status == statusFilter);
+            }
+
+            if (!string.IsNullOrWhiteSpace(leaveTypeFilter))
+            {
+                filtered = filtered.Where(l => l.LeaveCode == leaveTypeFilter);
+            }
+
+            return filtered.OrderByDescending(l => l.ApplicationDate);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("🔍 LeaveApplication.razor initialized");
+
+        // Get current user info
+        currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+        currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+
+        Console.WriteLine($"🔍 Current User - Name: {currentEmployeeName}, EmployeeNo: {currentEmployeeNo}");
+
+        if (string.IsNullOrEmpty(currentEmployeeNo))
+        {
+            errorMessage = "Employee number not found. Please log in again.";
+            loading = false;
+            StateHasChanged();
+            return;
+        }
+
+        await LoadLeaveTypes();
+        await LoadLeaveApplications();
+        await LoadEmployees();
+    }
+
+    private async Task LoadLeaveTypes()
+    {
+        try
+        {
+            leaveTypes = await BCService.GetLeaveTypesAsync();
+            Console.WriteLine($"🔍 Loaded {leaveTypes.Count} leave types");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading leave types: {ex.Message}");
+            leaveTypes = new List<LeaveType>();
+        }
+    }
+
+    private async Task LoadLeaveApplications()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            Console.WriteLine($"🔍 Loading leave applications for employee: {currentEmployeeNo}");
+
+            leaveApplications = await BCService.GetLeaveApplicationsByEmployeeAsync(currentEmployeeNo);
+
+            Console.WriteLine($"🔍 Loaded {leaveApplications.Count} applications");
+
+            // Get initial leave balance for ANNUAL leave (default)
+            await UpdateLeaveBalanceForType("ANNUAL");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load leave applications: {ex.Message}";
+            Console.WriteLine($"❌ Error loading leave applications: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UpdateLeaveBalanceForType(string leaveCode)
+    {
+        var balance = await BCService.GetEmployeeLeaveBalance(currentEmployeeNo, leaveCode);
+        currentEmployeeLeaveBalance = (int)(balance ?? 0);
+
+        var selectedType = leaveTypes.FirstOrDefault(lt => lt.Code == leaveCode);
+        if (selectedType != null && !selectedType.UnlimitedDays)
+        {
+            selectedLeaveTypeDays = selectedType.Days;
+            leaveTaken = selectedType.Days - currentEmployeeLeaveBalance;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OnLeaveTypeChanged(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return;
+
+        var selectedType = leaveTypes.FirstOrDefault(lt => lt.Code == value);
+        if (selectedType != null)
+        {
+            selectedLeaveTypeDays = selectedType.Days;
+            selectedLeaveTypeUnlimited = selectedType.UnlimitedDays;
+
+            // Update balance for the selected leave type
+            await UpdateLeaveBalanceForType(value);
+        }
+    }
+
+    private int GetPendingDaysForLeaveType(string leaveCode)
+    {
+        if (string.IsNullOrEmpty(leaveCode))
+            return 0;
+
+        return leaveApplications
+            .Where(a => a.Status == "Open" &&
+                       a.LeaveCode == leaveCode &&
+                       (editingApplication == null || a.ApplicationNo != editingApplication.ApplicationNo))
+            .Sum(a => a.DaysApplied);
+    }
+
+    private async Task LoadEmployees()
+    {
+        try
+        {
+            employees = await BCService.GetEmployeesAsync();
+            Console.WriteLine($"🔍 Loaded {employees.Count} employees");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading employees: {ex.Message}");
+            employees = new List<Employee>();
+        }
+    }
+
+    private void OpenCreateDrawer()
+    {
+        isEditMode = false;
+        editingApplication = null;
+        formModel = new LeaveApplicationCreate
+        {
+            EmployeeNo = currentEmployeeNo,
+            DaysApplied = 1,
+            LeaveCode = "ANNUAL" // Default leave type
+        };
+        startDate = DateTime.Today;
+
+        formValid = false;
+        drawerOpen = true;
+
+        // Trigger balance calculation for default leave type
+        _ = OnLeaveTypeChanged("ANNUAL");
+        StateHasChanged();
+    }
+
+    private async void OpenEditDrawer(LeaveApplication leave)
+    {
+        if (leave.Status != "Open")
+        {
+            Snackbar.Add("Cannot edit application that has already been submitted", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            // Fetch the latest version with all fields
+            var currentApp = await BCService.GetLeaveApplicationAsync(leave.ApplicationNo);
+
+            if (currentApp == null)
+            {
+                Snackbar.Add("Could not load application details", Severity.Error);
+                return;
+            }
+
+            isEditMode = true;
+            editingApplication = currentApp;
+
+            formModel = new LeaveApplicationCreate
+            {
+                EmployeeNo = currentApp.EmployeeNo,
+                LeaveCode = currentApp.LeaveCode,
+                DaysApplied = currentApp.DaysApplied,
+                DutiesTakenOverBy = currentApp.DutiesTakenOverBy,
+                Reason = currentApp.Reason,
+                TelephoneNo = currentApp.TelephoneNo,
+                AlternatePhoneNo = currentApp.AlternatePhoneNo
+            };
+
+            if (DateTime.TryParse(currentApp.StartDate, out var start))
+            {
+                startDate = start;
+            }
+            else
+            {
+                startDate = DateTime.Today;
+            }
+
+            // Trigger balance calculation for the leave type
+            if (!string.IsNullOrEmpty(formModel.LeaveCode))
+            {
+                await OnLeaveTypeChanged(formModel.LeaveCode);
+            }
+
+            drawerOpen = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading application for edit: {ex.Message}");
+            Snackbar.Add("Failed to load application for editing", Severity.Error);
+        }
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+        formModel = new LeaveApplicationCreate();
+        startDate = null;
+        selectedLeaveTypeUnlimited = false;
+        selectedLeaveTypeDays = 0;
+        editingApplication = null;
+    }
+
+    private async Task SaveLeaveApplication()
+    {
+        try
+        {
+            await form.Validate();
+
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            // Validation
+            if (!startDate.HasValue)
+            {
+                Snackbar.Add("Please select a start date", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.LeaveCode))
+            {
+                Snackbar.Add("Please select a leave type", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (formModel.DaysApplied <= 0)
+            {
+                Snackbar.Add("Please enter a valid number of days", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.DutiesTakenOverBy))
+            {
+                Snackbar.Add("Please select who will take over your duties", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            // Get selected leave type
+            var selectedType = leaveTypes.FirstOrDefault(lt => lt.Code == formModel.LeaveCode);
+            bool isUnlimited = selectedType?.UnlimitedDays == true;
+
+            // Check balance only for non-unlimited leave types
+            if (!isUnlimited)
+            {
+                var balance = await BCService.GetEmployeeLeaveBalance(currentEmployeeNo, formModel.LeaveCode);
+                var availableBalance = (balance ?? selectedLeaveTypeDays);
+
+                // Check for pending applications (excluding current if editing)
+                var pendingDays = GetPendingDaysForLeaveType(formModel.LeaveCode);
+                var remainingBalance = availableBalance - pendingDays;
+
+                if (formModel.DaysApplied > remainingBalance)
+                {
+                    var message = $"Available {formModel.LeaveCode} leave: {availableBalance} days\n" +
+                                 $"Pending applications: {pendingDays} days\n" +
+                                 $"Remaining available: {remainingBalance} days\n" +
+                                 $"You're requesting: {formModel.DaysApplied} days\n\n" +
+                                 $"You need {formModel.DaysApplied - remainingBalance} more days. Do you want to proceed anyway?";
+
+                    var confirmed = await DialogService.ShowMessageBox(
+                        "Insufficient Leave Balance",
+                        message,
+                        yesText: "Proceed",
+                        cancelText: "Cancel");
+
+                    if (confirmed != true)
+                    {
+                        saving = false;
+                        return;
+                    }
+                }
+            }
+
+            // Prepare the application
+            formModel.EmployeeNo = currentEmployeeNo;
+            formModel.StartDate = startDate.Value.ToString("yyyy-MM-dd");
+
+            Console.WriteLine($"📤 {(isEditMode ? "Updating" : "Submitting")} leave application:");
+            Console.WriteLine($"   Employee: {formModel.EmployeeNo}");
+            Console.WriteLine($"   Leave Type: {formModel.LeaveCode}");
+            Console.WriteLine($"   Days: {formModel.DaysApplied}");
+            Console.WriteLine($"   Start: {formModel.StartDate}");
+            Console.WriteLine($"   Handover: {formModel.DutiesTakenOverBy}");
+            Console.WriteLine($"   Reason: {formModel.Reason}");
+            Console.WriteLine($"   Telephone: {formModel.TelephoneNo}");
+            Console.WriteLine($"   Alternate Phone: {formModel.AlternatePhoneNo}");
+
+            string result;
+            if (isEditMode && editingApplication != null)
+            {
+                // Update the existing application with new values
+                editingApplication.LeaveCode = formModel.LeaveCode;
+                editingApplication.DaysApplied = formModel.DaysApplied;
+                editingApplication.StartDate = formModel.StartDate;
+                editingApplication.DutiesTakenOverBy = formModel.DutiesTakenOverBy;
+                editingApplication.Reason = formModel.Reason;
+                editingApplication.TelephoneNo = formModel.TelephoneNo;
+                editingApplication.AlternatePhoneNo = formModel.AlternatePhoneNo;
+
+                Console.WriteLine($"🔄 Updating application {editingApplication.ApplicationNo} with ETag: {editingApplication.ODataEtag}");
+
+                result = await BCService.UpdateLeaveApplicationAsync(editingApplication);
+            }
+            else
+            {
+                // For create mode, call the Create method
+                result = await BCService.CreateLeaveApplicationAsync(formModel);
+            }
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add(isEditMode ? "Leave application updated successfully!" : "Leave application submitted successfully!", Severity.Success);
+                successMessage = result;
+                CloseDrawer();
+                await LoadLeaveApplications();
+            }
+            else
+            {
+                // Show the actual error message from BC
+                Snackbar.Add(result, Severity.Error, config => { config.VisibleStateDuration = 8000; });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in SaveLeaveApplication: {ex}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteLeave(LeaveApplication leave)
+    {
+        if (leave.Status != "Open")
+        {
+            Snackbar.Add("Cannot delete application that has already been submitted", Severity.Warning);
+            return;
+        }
+
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Leave Application",
+            $"Are you sure you want to delete application '{leave.ApplicationNo}'? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                CloseButton = true
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var deleted = await BCService.DeleteLeaveApplicationAsync(leave.ApplicationNo, leave.ODataEtag);
+
+                if (deleted)
+                {
+                    Snackbar.Add($"Application {leave.ApplicationNo} deleted successfully", Severity.Success);
+                    await LoadLeaveApplications();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete application", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task RefreshList()
+    {
+        await LoadLeaveApplications();
+        Snackbar.Add("List refreshed successfully", Severity.Success);
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        statusFilter = "";
+        leaveTypeFilter = "";
+    }
+
+    private void ViewDetails(LeaveApplication leave)
+    {
+        // Implement view details dialog if needed
+        var parameters = new DialogParameters { ["LeaveApplication"] = leave };
+        DialogService.Show<LeaveApplicationDetails>("Leave Application Details", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+    }
+
+    private List<string> GetUniqueLeaveTypes()
+    {
+        return leaveApplications
+            .Select(l => l.LeaveCode)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
+    }
+
+    private int GetCountByStatus(string status)
+    {
+        return leaveApplications.Count(l => l.Status == status);
+    }
+
+    private string ParseDate(string dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private string GetTimeAgo(string dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || !DateTime.TryParse(dateString, out var date))
+            return "";
+
+        var timeSpan = DateTime.Now - date;
+
+        if (timeSpan.TotalDays > 365)
+            return $"{(int)(timeSpan.TotalDays / 365)} year(s) ago";
+        if (timeSpan.TotalDays > 30)
+            return $"{(int)(timeSpan.TotalDays / 30)} month(s) ago";
+        if (timeSpan.TotalDays > 1)
+            return $"{(int)timeSpan.TotalDays} day(s) ago";
+        if (timeSpan.TotalHours > 1)
+            return $"{(int)timeSpan.TotalHours} hour(s) ago";
+        if (timeSpan.TotalMinutes > 1)
+            return $"{(int)timeSpan.TotalMinutes} minute(s) ago";
+
+        return "Just now";
+    }
+
+    private string GetBalanceStyle(int balance)
+    {
+        if (selectedLeaveTypeUnlimited)
+            return "color: #4caf50;";
+
+        return balance > 10 ? "color: #4caf50;" :
+               balance > 5 ? "color: #D4A853;" :
+               "color: #f44336;";
+    }
+
+    private RenderFragment GetStatusChip(string status)
+    {
+        var (colorStyle, icon) = status switch
+        {
+            "Open" => ("background-color: #999; color: white;", Icons.Material.Filled.Circle),
+            "Pending Approval" => ("background-color: #D4A853; color: white;", Icons.Material.Filled.HourglassBottom),
+            "Approved" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Rejected" => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

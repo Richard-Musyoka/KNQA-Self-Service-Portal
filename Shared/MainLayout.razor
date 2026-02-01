@@ -1,0 +1,172 @@
+﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
+
+<PageTitle>KNQA-SELF-SERVICE</PageTitle>
+
+<div class="page">
+    @if (DrawerOpen)
+    {
+        <div class="sidebar">
+            <NavMenu />
+        </div>
+    }
+
+    <main style="@GetMainStyle()">
+        <div class="top-row px-4">
+            <MudAppBar Elevation="1" Dense="true" Style="background-color:#00286E">
+                <MudImage Src="images\knqa-logo.png" Style="height:50px" Class="img-fluid" />
+
+                <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" Style="margin-left:60px" />
+                <MudSpacer />
+
+                <MudMenu>
+                    <ActivatorContent>
+                        <MudText Style="margin-top:10px;margin-right:8px">@name</MudText>
+                        <MudAvatar>
+                            <MudAvatar Style="@Smallavaterstyle">@FirstLeter</MudAvatar>
+                        </MudAvatar>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudPaper Width="300px" Square="true" Elevation="0">
+                            <MudList T="string" Dense="true">
+                                <div style="text-align:center">
+                                    <MudAvatar Style="@avaterstyle">@FirstLeter</MudAvatar>
+                                    <MudText Typo="Typo.h5" Class="px-4 mt-3 text-capitalize">@name</MudText>
+                                    <MudText Typo="Typo.body2" Class="px-4 mud-text-secondary">@email</MudText>
+                                </div>
+                                <MudDivider Style="margin-top:8px" />
+                                <MudListItem Text="My Profile" OnClick="@(() => Navigation.NavigateTo("/profile"))" Icon="@Icons.Material.Outlined.AccountCircle" />
+                                <MudDivider />
+                                <MudListItem Style="Color:red" Text="Log Out" OnClick="Logout" IconColor="Color.Error" Icon="@Icons.Material.Filled.Logout" />
+                            </MudList>
+                        </MudPaper>
+                    </ChildContent>
+                </MudMenu>
+            </MudAppBar>
+        </div>
+
+        <article class="content px-4" style="overflow-x: auto; width: 100%;">
+            @Body
+        </article>
+    </main>
+</div>
+
+<MudMessageBox @ref="mbox" Title="Warning!!." CancelText="Cancel ">
+    <MessageContent>
+        <MudAlert Severity="Severity.Error">
+            You are about to log out. Would you like to continue?
+        </MudAlert>
+    </MessageContent>
+    <YesButton>
+        <MudButton Variant="Variant.Filled" Class="text-capitalize" Color="Color.Error" EndIcon="@Icons.Material.Outlined.Logout"> Log Out!</MudButton>
+    </YesButton>
+</MudMessageBox>
+
+<MudOverlay @bind-Visible="visible" LightBackground="true" AutoClose="false" ZIndex="9999">
+    <MudCard Elevation="0">
+        <MudCardActions>
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            <MudText Typo="Typo.h6" Color="Color.Primary" Style="margin-left:24px">Loading...</MudText>
+        </MudCardActions>
+    </MudCard>
+</MudOverlay>
+
+@code {
+    bool open = true;
+    string avaterstyle = "";
+    string Smallavaterstyle = "";
+    string name = "n/a";
+    string FirstLeter = "";
+    string email = "n/a";
+    string color = "";
+    int UserIdd;
+
+    private bool DrawerOpen = true;
+
+    private void ToggleDrawer()
+    {
+        DrawerOpen = !DrawerOpen;
+    }
+
+    private string GetMainStyle()
+    {
+        if (DrawerOpen)
+        {
+            return "margin-left: 0px; overflow-x: hidden;";
+        }
+        return "margin-left: 0; width: 100%; overflow-x: hidden;";
+    }
+
+    private bool visible;
+
+    public void OpenLoading()
+    {
+        visible = true;
+        StateHasChanged();
+    }
+
+    public void CloseLoading()
+    {
+        visible = false;
+        StateHasChanged();
+    }
+
+    private string? userName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        await LoadUserNameAsync();
+    }
+
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        await LoadUserNameAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadUserNameAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            name = user.FindFirst("FullName")?.Value ?? user.Identity.Name;
+            FirstLeter = name.Substring(0, 1).ToUpper();
+            email = user.FindFirst("Email")?.Value ?? user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "user@knqa.go.ke";
+            var colors = new[] { "#00286E", "#D4A853", "#0288d1", "#4caf50", "#f44336", "#9c27b0" };
+            color = colors[new Random().Next(colors.Length)];
+            avaterstyle = $"background-color:{color}; height:70px; width:70px; font-size:2rem;color:white";
+            UserIdd = 12;
+            Smallavaterstyle = $"background-color:{color};border:solid 1px white;color:white";
+        }
+        else
+        {
+            userName = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
+
+    MudMessageBox mbox { get; set; }
+
+    private async Task Logout()
+    {
+        bool? mboxresult = await mbox.ShowAsync();
+
+        if (mboxresult == true)
+        {
+            var result = await JS.InvokeAsync<bool>("logoutViaFetch");
+            if (result)
+            {
+                Navigation.NavigateTo("/login");
+            }
+        }
+    }
+}

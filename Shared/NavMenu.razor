@@ -1,0 +1,136 @@
+﻿<div class="top-row ps-3 navbar navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="">
+            <span class="oi oi-grid-three-up me-2"></span>
+            KNQA Self-Service
+        </a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column p-3">
+
+        <!-- Dashboard -->
+        <div class="nav-item px-2">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home me-2" aria-hidden="true"></span>
+                Dashboard
+            </NavLink>
+        </div>
+
+        <div class="nav-divider"></div>
+
+        <!-- Leave Management -->
+        <div class="nav-item px-2">
+            <MudNavGroup Title="Leave Management"
+                         Icon="@Icons.Material.Filled.DateRange"
+                         Expanded="false">
+                <MudNavLink Href="leave-planning">Leave Planning</MudNavLink>
+                <MudNavLink Href="leave-application">Leave Application</MudNavLink>
+            </MudNavGroup>
+        </div>
+
+        <!-- Performance Management -->
+        <div class="nav-item px-2">
+            <MudNavGroup Title="Performance Management"
+                         Icon="@Icons.Material.Filled.Assessment"
+                         Expanded="false">
+                <MudNavLink Href="target-setting">Target Setting</MudNavLink>
+                <MudNavLink Href="appraisal">Appraisal</MudNavLink>
+            </MudNavGroup>
+        </div>
+
+        <!-- Training & Development -->
+        <div class="nav-item px-2">
+            <MudNavGroup Title="Training & Development"
+                         Icon="@Icons.Material.Filled.School"
+                         Expanded="false">
+                <MudNavLink Href="training-request">Training Request</MudNavLink>
+                <MudNavLink Href="training-evaluation">Training Evaluation</MudNavLink>
+            </MudNavGroup>
+        </div>
+
+        <div class="nav-divider"></div>
+
+        <!-- Recruitment -->
+        <div class="nav-item px-2">
+            <MudNavGroup Title="Job Requisition"
+                         Icon="@Icons.Material.Filled.Business"
+                         Expanded="false">
+                <MudNavLink Href="job-requisition">Job Requisition</MudNavLink>
+            </MudNavGroup>
+        </div>
+
+        <div class="nav-divider"></div>
+
+        <!-- Administrative Services -->
+        <div class="nav-item px-2">
+            <MudNavGroup Title="Administrative Services"
+                         Icon="@Icons.Material.Filled.Business"
+                         Expanded="false">
+                <MudNavLink Href="meeting-room">Meeting Rooms</MudNavLink>
+                <MudNavLink Href="transport-management">Transport</MudNavLink>
+                <MudNavLink Href="vehicle-maintenance">Vehicle Maintenance</MudNavLink>
+            </MudNavGroup>
+        </div>
+
+        <div class="nav-divider"></div>
+
+        <!-- Asset Management -->
+        <div class="nav-item px-2">
+            <MudNavGroup Title="Asset Management"
+                         Icon="@Icons.Material.Filled.Computer"
+                         Expanded="false">
+                <MudNavLink Href="my-assets">My Assets</MudNavLink>
+                <MudNavLink Href="asset-management">Asset Management</MudNavLink>
+                <MudNavLink Href="fixed-assets">Fixed Assets</MudNavLink>
+            </MudNavGroup>
+        </div>
+
+        <!-- IT Support -->
+        <div class="nav-item px-2">
+            <MudNavGroup Title="IT Support"
+                         Icon="@Icons.Material.Filled.Support"
+                         Expanded="false">
+                <MudNavLink Href="help-desk">Help Desk</MudNavLink>
+                <MudNavLink Href="incident-management">Incident Management</MudNavLink>
+            </MudNavGroup>
+        </div>
+
+        <div class="nav-divider"></div>
+
+        <!-- Administration -->
+        <div class="nav-item px-2">
+            <MudNavGroup Title="Administration"
+                         Icon="@Icons.Material.Filled.Settings"
+                         Expanded="false"
+                         Class="admin-nav-group">
+                <MudNavLink Href="/users">Users</MudNavLink>
+            </MudNavGroup>
+        </div>
+
+        <div class="nav-divider"></div>
+
+        <!-- Personal & Profile -->
+        <div class="nav-item px-2">
+            <NavLink class="nav-link" href="profile">
+                <span class="oi oi-person me-2" aria-hidden="true"></span>
+                My Profile
+            </NavLink>
+        </div>
+
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

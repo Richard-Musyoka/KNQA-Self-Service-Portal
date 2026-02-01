@@ -1,0 +1,38 @@
+﻿@page "/"
+@namespace KNQASelfService.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@using Microsoft.AspNetCore.Components.Authorization
+
+@{
+    Layout = "_Layout";
+}
+
+@* <CascadingAuthenticationState> *@
+    <component type="typeof(App)" render-mode="ServerPrerendered" />
+@* </CascadingAuthenticationState> *@
+
+@section Scripts {
+    <script>
+        window.loginViaFetch = async (email, password) => {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
+
+            return response.ok;
+        };
+
+        window.logoutViaFetch = async () => {
+            const response = await fetch('/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+            });
+
+            return response.ok;
+        };
+    </script>
+}

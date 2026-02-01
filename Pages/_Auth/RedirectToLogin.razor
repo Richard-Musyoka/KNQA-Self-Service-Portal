@@ -1,0 +1,15 @@
+﻿@inject NavigationManager NavigationManager
+<h1>Hello, world!wwwww</h1>
+@code {
+    [CascadingParameter] public Task<AuthenticationState> AuthStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateTask;
+        if (authState.User.Identity is null || !authState.User.Identity.IsAuthenticated)
+        {
+            var returnUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+            NavigationManager.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", true);
+        }
+    }
+}
