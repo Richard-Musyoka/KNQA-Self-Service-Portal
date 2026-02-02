@@ -1,120 +1,103 @@
 KNQA Self-Service Portal
-A comprehensive employee self-service portal built with Blazor and .NET for the Kenya National Qualifications Authority (KNQA). This portal integrates with Microsoft Dynamics 365 Business Central to provide seamless leave management, employee information access, and HR workflows.
+
+A comprehensive Employee Self-Service Portal built with Blazor and .NET 8 for the Kenya National Qualifications Authority (KNQA).
+The system integrates with Microsoft Dynamics 365 Business Central to streamline leave management, employee information access, and HR workflows.
 
 🚀 Features
 📋 Leave Management
-Create Leave Applications: Submit new leave requests with detailed information
 
-Edit/Delete Applications: Modify or cancel pending leave applications
+Create Leave Applications – Submit new leave requests with full details
 
-Leave Balance Tracking: Real-time view of available leave days by type
+Edit / Delete Applications – Modify or cancel pending leave requests
 
-Leave Type Management: Support for various leave types (Annual, Sick, Maternity, etc.)
+Leave Balance Tracking – Real-time leave balance by leave type
 
-Approval Workflow: Track application status (Open, Approved, Rejected)
+Multiple Leave Types – Annual, Sick, Maternity, Study, etc.
 
-Duty Handover: Assign duties to colleagues during leave periods
+Approval Workflow – Track status (Open, Approved, Rejected)
+
+Duty Handover – Assign responsibilities during leave periods
 
 👥 Employee Management
-Employee Directory: View active employees
 
-Profile Management: Access personal information
+Employee Directory – View active employees
 
-Department Information: View organizational structure
+Profile Management – Access personal and employment details
+
+Department Information – View organizational structure
 
 🎨 User Experience
-Responsive Design: Works on desktop and mobile devices
 
-Modern UI: Built with MudBlazor components
+Responsive Design – Optimized for desktop and mobile
 
-Real-time Updates: Live status updates and notifications
+Modern UI – Built using MudBlazor Material components
 
-Search & Filter: Advanced filtering for leave applications
+Real-time Updates – Live notifications and status updates
 
-Visual Indicators: Color-coded status and balance indicators
+Search & Filters – Advanced filtering for leave applications
+
+Visual Indicators – Color-coded leave status and balances
 
 🔒 Security & Integration
-Business Central Integration: Real-time sync with Dynamics 365 BC
 
-Role-based Access: Secure employee data access
+Business Central Integration – Real-time sync with Dynamics 365 BC
 
-Authentication: Integrated with existing KNQA systems
+Role-Based Access Control (RBAC)
 
-Data Validation: Comprehensive form validation
+Authentication – Integrated with KNQA identity systems
+
+Data Validation – Client-side and server-side validation
 
 🛠️ Technology Stack
 Frontend
+
 Blazor WebAssembly (.NET 8)
 
-MudBlazor - Material Design component library
+MudBlazor – UI component library
 
-C# - Full-stack development
+C# – Full-stack development
 
-CSS - Custom styling with KNQA branding
+CSS – Custom KNQA branding
 
 Backend
+
 .NET 8 Web API
 
-Entity Framework Core (if using local database)
+Entity Framework Core (optional local persistence)
 
-HttpClient - Business Central API integration
+HttpClient – Business Central integration
 
-JWT Authentication - Secure API access
+JWT Authentication
 
 Integration
-Microsoft Dynamics 365 Business Central - HR and leave management
 
-OData API - Real-time data synchronization
+Microsoft Dynamics 365 Business Central
 
-RESTful Services - External system integration
+OData APIs – Read operations
+
+REST APIs – Create / update operations
 
 DevOps
-GitHub - Source control and collaboration
-
-Docker - Containerization support
-
-Azure - Deployment target (recommended)
-
-📁 Project Structure
-text
-KNQASelfService/
-├── Client/                 # Blazor WebAssembly frontend
-│   ├── Pages/            # Application pages
-│   │   ├── LeaveApplication.razor
-│   │   └── EmployeeDirectory.razor
-│   ├── Components/       # Reusable components
-│   ├── Services/        # Client-side services
-│   └── wwwroot/         # Static assets
-├── Server/              # .NET Web API backend
-│   ├── Controllers/     # API endpoints
-│   ├── Services/        # Business logic
-│   └── Models/         # Data models
-├── Shared/             # Shared code
-│   └── Models/        # Shared data models
-└── Tests/              # Unit and integration tests
 🔧 Setup & Installation
 Prerequisites
+
 .NET 8 SDK
 
 Visual Studio 2022+ or VS Code
 
-Business Central Sandbox/Production environment
+Business Central Sandbox or Production environment
 
 Git
 
 Installation Steps
-Clone the repository
-
-bash
+1️⃣ Clone the Repository
 git clone https://github.com/knqa/self-service-portal.git
 cd self-service-portal
-Configure Business Central Integration
 
-Create appsettings.json or appsettings.Development.json
+2️⃣ Configure Business Central Integration
 
-Add Business Central API credentials:
+Create appsettings.json or appsettings.Development.json:
 
-json
 {
   "BusinessCentral": {
     "BaseUrl": "https://api.businesscentral.dynamics.com",
@@ -123,89 +106,86 @@ json
     "Password": "api-password"
   }
 }
-Build and Run
 
-bash
+
+⚠️ Use environment variables or Azure Key Vault in production.
+
+3️⃣ Build and Run
 dotnet restore
 dotnet build
 dotnet run
-Access the Portal
 
-Open browser to: https://localhost:5001
+4️⃣ Access the Portal
 
-Login with employee credentials
+Open your browser at:
+
+https://localhost:5001
+
+
+Login using employee credentials.
 
 🚀 Deployment
 Azure App Service
-bash
-# Publish to Azure
 dotnet publish -c Release
 az webapp up --name knqa-portal --resource-group knqa-rg
+
 Docker Deployment
-bash
-# Build Docker image
+# Build image
 docker build -t knqa-self-service .
 
 # Run container
 docker run -p 8080:80 knqa-self-service
+
 📊 Business Central Integration
-The portal integrates with Business Central through:
 
-OData Web Services - Read operations
+The portal integrates with Business Central using:
 
-API Endpoints - Create/Update operations
+OData Web Services – Read operations
 
-Custom APIs - Extended business logic
+REST APIs – Create and update operations
 
-ETag Concurrency - Optimistic locking for data integrity
+Custom APIs – Extended business logic
 
-Key Integration Points
-Leave_Applications_List - Leave management
+ETag Concurrency – Optimistic locking
 
-Employees - Employee directory
+Key Endpoints
 
-LeaveTypes - Leave type configurations
+Leave_Applications_List – Leave management
 
-EmployeeLeaveBalance - Leave balance tracking
+Employees – Employee directory
+
+LeaveTypes – Leave configuration
+
+EmployeeLeaveBalance – Leave balances
 
 🎯 Key Benefits
 For Employees
+
 ✅ 24/7 access to leave information
-
 ✅ Simplified leave application process
-
-✅ Real-time balance tracking
-
-✅ Mobile-friendly interface
-
+✅ Real-time leave balance tracking
+✅ Mobile-friendly experience
 ✅ Reduced paperwork
 
-For HR Department
+For HR
+
 ✅ Automated workflows
-
 ✅ Reduced administrative workload
-
-✅ Better compliance tracking
-
+✅ Improved compliance
 ✅ Real-time reporting
 
-✅ Integration with existing systems
+For KNQA
 
-For Organization
 ✅ Increased productivity
-
 ✅ Improved employee satisfaction
-
 ✅ Digital transformation
-
-✅ Cost savings through automation
-
-✅ Scalable solution
+✅ Scalable and secure solution
 
 🔐 Security Features
-Role-based Access Control (RBAC)
 
-JWT Token Authentication
+Role-Based Access Control (RBAC)
+
+JWT Authentication
 
 HTTPS Enforcement
 
@@ -216,55 +196,15 @@ API Rate Limiting
 Audit Logging
 
 📈 Performance
-Blazor WebAssembly - Fast client-side rendering
 
-API Caching - Reduced Business Central calls
+Blazor WebAssembly for fast client rendering
 
-Lazy Loading - Optimized resource loading
+API caching to reduce BC calls
 
-Minimal Payloads - Efficient data transfer
+Lazy loading for optimized resources
 
-Compression - GZIP compression enabled
+GZIP compression enabled
 
-🤝 Contributing
-We welcome contributions! Please see our Contributing Guidelines for details.
+GitHub – Source control
 
-Fork the repository
-
-Create a feature branch (git checkout -b feature/AmazingFeature)
-
-Commit changes (git commit -m 'Add AmazingFeature')
-
-Push to branch (git push origin feature/AmazingFeature)
-
-Open a Pull Request
-
-📝 License
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-👥 Team
-Project Lead: [Name]
-
-Development Team: [Names]
-
-HR Department: KNQA HR Team
-
-Business Analysts: [Names]
-
-🙏 Acknowledgments
-Kenya National Qualifications Authority
-
-Microsoft Dynamics 365 Business Central Team
-
-Blazor & .NET Community
-
-Open Source Contributors
-
-📞 Support
-For support, please:
-
-Check the Wiki
-
-Open an Issue
-
-Contact: support@knqa.go.ke
+Docker – Containerization
