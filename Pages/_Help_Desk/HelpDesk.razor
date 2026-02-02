@@ -1,0 +1,891 @@
+﻿@page "/help-desk"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IHelpDeskService HelpDeskService
+@inject ICurrentUserService CurrentUserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Help Desk</PageTitle>
+
+<MudLayout>
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="600px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                @(isEditMode ? "Edit Ticket" : "New Support Ticket")
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@formValid">
+                <MudGrid Spacing="3">
+                    @if (isEditMode && editingTicket != null)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingTicket.TicketNo"
+                                          Label="Ticket Number"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingTicket.Status"
+                                          Label="Status"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+
+                    <!-- Category Selection -->
+                    <MudItem xs="12">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.Category"
+                                   Label="Category *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            @foreach (var category in categories)
+                            {
+                                <MudSelectItem Value="@category">@category</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Priority Selection -->
+                    <MudItem xs="12">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.Priority"
+                                   Label="Priority *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            <MudSelectItem Value="@TicketPriority.LOW">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" Style="color: #4caf50;" />
+                                    <span>Low</span>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@TicketPriority.MEDIUM">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Remove" Size="Size.Small" Style="color: #D4A853;" />
+                                    <span>Medium</span>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@TicketPriority.HIGH">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" Style="color: #ff9800;" />
+                                    <span>High</span>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@TicketPriority.URGENT">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.PriorityHigh" Size="Size.Small" Style="color: #f44336;" />
+                                    <span>Urgent</span>
+                                </MudStack>
+                            </MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Location -->
+                    <MudItem xs="12">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.Location"
+                                   Label="Location *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            @foreach (var location in locations)
+                            {
+                                <MudSelectItem Value="@location">@location</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Description -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.Description"
+                                      Label="Description *"
+                                      Variant="Variant.Outlined"
+                                      Lines="5"
+                                      Required="true"
+                                      Counter="500"
+                                      MaxLength="500"
+                                      HelperText="Describe your issue in detail" />
+                    </MudItem>
+
+                    <!-- Contact Information -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.ContactEmail"
+                                      Label="Contact Email"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Email"
+                                      HelperText="Optional: Alternate email for updates" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.ContactPhone"
+                                      Label="Contact Phone"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Telephone"
+                                      HelperText="Optional: Alternate phone number" />
+                    </MudItem>
+
+                    <!-- Ticket Summary -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-3"
+                                  Elevation="0"
+                                  Style="background-color: #f5f5f5; border-left: 4px solid #D4A853;">
+                            <MudText Typo="Typo.body2" Style="color: #00286E; margin-bottom: 12px;">
+                                <strong>Ticket Summary</strong>
+                            </MudText>
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Category:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(string.IsNullOrEmpty(formModel.Category) ? "Not selected" : formModel.Category)</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Priority:</MudText>
+                                    <MudText Typo="Typo.body2" Style="@GetPriorityColorStyle(formModel.Priority)">
+                                        <strong>@(string.IsNullOrEmpty(formModel.Priority) ? "Not selected" : formModel.Priority)</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Location:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(string.IsNullOrEmpty(formModel.Location) ? "Not selected" : formModel.Location)</strong>
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => SaveTicket())"
+                           Disabled="@(!formValid || saving)">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Saving...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Send" Size="Size.Small" />
+                        <span class="ms-2">@(isEditMode ? "Update" : "Submit Ticket")</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.SupportAgent" Style="margin-right: 12px; vertical-align: middle;" />
+                            Help Desk
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(currentEmployeeName))
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                @currentEmployeeName (@currentEmployeeNo)
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudButton Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   Style="background-color: #D4A853; color: white; font-weight: 600;"
+                                   Size="Size.Large"
+                                   OnClick="OpenCreateDrawer">
+                            New Ticket
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Error/Success Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => errorMessage = null"
+                          Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => successMessage = null"
+                          Class="mb-4">
+                    @successMessage
+                </MudAlert>
+            }
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </div>
+            }
+            else
+            {
+                <!-- Summary Cards -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Tickets</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.TotalTickets</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Open</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.OpenTickets</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">In Progress</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.InProgressTickets</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Autorenew" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Resolved</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.ResolvedTickets</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Tickets Table -->
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853; margin-bottom: 20px">
+                    <MudTable Items="@FilteredTickets"
+                              Hover="true"
+                              Breakpoint="Breakpoint.Sm"
+                              Dense="true"
+                              Striped="true"
+                              Style="border-radius: 12px;">
+                        <ToolBarContent>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.FilterList" Style="color: #00286E;" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">My Tickets</MudText>
+                                    <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">@tickets.Count tickets</MudChip>
+                                </MudStack>
+
+                                <MudStack Row="true" Spacing="2">
+                                    <MudTextField @bind-Value="searchTerm"
+                                                  Placeholder="Search tickets..."
+                                                  Adornment="Adornment.Start"
+                                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                                  IconSize="Size.Medium"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  DebounceInterval="300"
+                                                  Style="min-width: 300px;"
+                                                  Class="mt-0">
+                                    </MudTextField>
+
+                                    <MudSelect @bind-Value="statusFilter"
+                                               Placeholder="Status"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Status</MudSelectItem>
+                                        <MudSelectItem Value="@TicketStatus.OPEN">Open</MudSelectItem>
+                                        <MudSelectItem Value="@TicketStatus.IN_PROGRESS">In Progress</MudSelectItem>
+                                        <MudSelectItem Value="@TicketStatus.PENDING">Pending</MudSelectItem>
+                                        <MudSelectItem Value="@TicketStatus.RESOLVED">Resolved</MudSelectItem>
+                                        <MudSelectItem Value="@TicketStatus.CLOSED">Closed</MudSelectItem>
+                                    </MudSelect>
+
+                                    <MudSelect @bind-Value="categoryFilter"
+                                               Placeholder="Category"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Categories</MudSelectItem>
+                                        @foreach (var category in GetUniqueCategories())
+                                        {
+                                            <MudSelectItem Value="@category">@category</MudSelectItem>
+                                        }
+                                    </MudSelect>
+
+                                    <MudTooltip Text="Clear Filters">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                                       Style="color: #666; border: 1px solid #666;"
+                                                       OnClick="ClearFilters" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Refresh">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                                       Style="color: #00286E; border: 1px solid #00286E;"
+                                                       OnClick="RefreshList" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudStack>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>Ticket No.</MudTh>
+                            <MudTh>Category</MudTh>
+                            <MudTh>Description</MudTh>
+                            <MudTh>Priority</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Location</MudTh>
+                            <MudTh>Created</MudTh>
+                            <MudTh Style="text-align: center;">Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Ticket No.">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">@context.TicketNo</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Category">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #D4A853; color: white;">@context.Category</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Description">
+                                <MudText Typo="Typo.body2" Style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    @context.Description
+                                </MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Priority">
+                                @GetPriorityChip(context.Priority)
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                @GetStatusChip(context.Status)
+                            </MudTd>
+                            <MudTd DataLabel="Location">
+                                <MudText Typo="Typo.body2">@context.Location</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Created">
+                                <MudText Typo="Typo.body2">@ParseDate(context.CreatedDate)</MudText>
+                                <MudText Typo="Typo.caption" Style="color: #999;">@context.CreatedTime</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Actions" Style="text-align: center;">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Style="color: #00286E;"
+                                                       OnClick="() => ViewDetails(context)" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="@(context.Status == TicketStatus.OPEN ? "Edit Ticket" : "Cannot edit - ticket in progress or closed")">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Size="Size.Small"
+                                                       Style="@(context.Status == TicketStatus.OPEN ? "color: #D4A853;" : "color: #ccc;")"
+                                                       OnClick="() => OpenEditDrawer(context)"
+                                                       Disabled="@(context.Status != TicketStatus.OPEN)" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="@(context.Status == TicketStatus.OPEN ? "Delete Ticket" : "Cannot delete - ticket in progress or closed")">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Style="@(context.Status == TicketStatus.OPEN ? "color: #f44336;" : "color: #ccc;")"
+                                                       OnClick="() => DeleteTicket(context)"
+                                                       Disabled="@(context.Status != TicketStatus.OPEN)" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div style="text-align: center; padding: 60px 20px;">
+                                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No tickets found</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria or create a new ticket</MudText>
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    // Continue in next part...
+}
+@code {
+    private List<HelpDeskTicket> tickets = new();
+    private HelpDeskTicketSummary summaryData = new();
+    private List<string> categories = new();
+    private List<string> locations = new();
+    private bool loading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = "";
+    private string? statusFilter = "";
+    private string? categoryFilter = "";
+    private string currentEmployeeNo = "";
+    private string currentEmployeeName = "";
+
+    // Drawer variables
+    private bool drawerOpen = false;
+    private bool isEditMode = false;
+    private bool saving = false;
+    private MudForm form;
+    private bool formValid;
+    private HelpDeskTicketCreate formModel = new();
+
+    // Store the ticket being edited
+    private HelpDeskTicket editingTicket = null;
+
+    private IEnumerable<HelpDeskTicket> FilteredTickets
+    {
+        get
+        {
+            var filtered = tickets.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                filtered = filtered.Where(t =>
+                    (t.TicketNo?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (t.Description?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (t.Category?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                filtered = filtered.Where(t => t.Status == statusFilter);
+            }
+
+            if (!string.IsNullOrWhiteSpace(categoryFilter))
+            {
+                filtered = filtered.Where(t => t.Category == categoryFilter);
+            }
+
+            return filtered.OrderByDescending(t => t.CreatedDate).ThenByDescending(t => t.CreatedTime);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("🔍 HelpDesk page initialized");
+
+        try
+        {
+            currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+            currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+
+            Console.WriteLine($"🔍 Current User - Name: {currentEmployeeName}, EmployeeNo: {currentEmployeeNo}");
+
+            if (string.IsNullOrEmpty(currentEmployeeNo))
+            {
+                errorMessage = "Employee number not found. Please log in again.";
+                loading = false;
+                StateHasChanged();
+                return;
+            }
+
+            await LoadCategories();
+            await LoadLocations();
+            await LoadTickets();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error in OnInitializedAsync: {ex}");
+            errorMessage = $"Error initializing page: {ex.Message}";
+            loading = false;
+        }
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            categories = await HelpDeskService.GetTicketCategoriesAsync();
+            Console.WriteLine($"🔍 Loaded {categories.Count} categories");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading categories: {ex.Message}");
+            categories = new List<string> { TicketCategory.GENERAL };
+        }
+    }
+
+    private async Task LoadLocations()
+    {
+        try
+        {
+            locations = await HelpDeskService.GetLocationsAsync();
+            Console.WriteLine($"🔍 Loaded {locations.Count} locations");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading locations: {ex.Message}");
+            locations = new List<string> { "Head Office" };
+        }
+    }
+
+    private async Task LoadTickets()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            Console.WriteLine($"🔍 Loading tickets for employee: {currentEmployeeNo}");
+
+            tickets = await HelpDeskService.GetTicketsByEmployeeAsync(currentEmployeeNo);
+            summaryData = await HelpDeskService.GetTicketSummaryAsync(currentEmployeeNo);
+
+            Console.WriteLine($"🔍 Loaded {tickets.Count} tickets");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load tickets: {ex.Message}";
+            Console.WriteLine($"❌ Error loading tickets: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OpenCreateDrawer()
+    {
+        isEditMode = false;
+        editingTicket = null;
+        formModel = new HelpDeskTicketCreate
+        {
+            EmployeeNo = currentEmployeeNo,
+            Category = TicketCategory.GENERAL,
+            Priority = TicketPriority.MEDIUM,
+            Location = locations.FirstOrDefault() ?? "Head Office"
+        };
+
+        formValid = false;
+        drawerOpen = true;
+        StateHasChanged();
+    }
+
+    private async void OpenEditDrawer(HelpDeskTicket ticket)
+    {
+        if (ticket.Status != TicketStatus.OPEN)
+        {
+            Snackbar.Add("Cannot edit ticket that is not in Open status", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            // Fetch the latest version with all fields
+            var currentTicket = await HelpDeskService.GetTicketAsync(ticket.TicketNo);
+
+            if (currentTicket == null)
+            {
+                Snackbar.Add("Could not load ticket details", Severity.Error);
+                return;
+            }
+
+            isEditMode = true;
+            editingTicket = currentTicket;
+
+            formModel = new HelpDeskTicketCreate
+            {
+                EmployeeNo = currentTicket.EmployeeNo,
+                Category = currentTicket.Category,
+                Priority = currentTicket.Priority,
+                Location = currentTicket.Location,
+                Description = currentTicket.Description,
+                ContactEmail = currentTicket.ContactEmail,
+                ContactPhone = currentTicket.ContactPhone
+            };
+
+            drawerOpen = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading ticket for edit: {ex.Message}");
+            Snackbar.Add("Failed to load ticket for editing", Severity.Error);
+        }
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+        formModel = new HelpDeskTicketCreate();
+        editingTicket = null;
+    }
+
+    private async Task SaveTicket()
+    {
+        try
+        {
+            await form.Validate();
+
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            // Validation
+            if (string.IsNullOrEmpty(formModel.Category))
+            {
+                Snackbar.Add("Please select a category", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.Priority))
+            {
+                Snackbar.Add("Please select a priority", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.Location))
+            {
+                Snackbar.Add("Please select a location", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.Description))
+            {
+                Snackbar.Add("Please provide a description", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            // Prepare the ticket
+            formModel.EmployeeNo = currentEmployeeNo;
+
+            Console.WriteLine($"📤 {(isEditMode ? "Updating" : "Creating")} ticket:");
+            Console.WriteLine($"   Employee: {formModel.EmployeeNo}");
+            Console.WriteLine($"   Category: {formModel.Category}");
+            Console.WriteLine($"   Priority: {formModel.Priority}");
+            Console.WriteLine($"   Location: {formModel.Location}");
+            Console.WriteLine($"   Description: {formModel.Description}");
+
+            string result;
+            if (isEditMode && editingTicket != null)
+            {
+                // Update the existing ticket with new values
+                editingTicket.Category = formModel.Category;
+                editingTicket.Priority = formModel.Priority;
+                editingTicket.Location = formModel.Location;
+                editingTicket.Description = formModel.Description;
+                editingTicket.ContactEmail = formModel.ContactEmail;
+                editingTicket.ContactPhone = formModel.ContactPhone;
+
+                Console.WriteLine($"🔄 Updating ticket {editingTicket.TicketNo} with ETag: {editingTicket.ODataEtag}");
+
+                result = await HelpDeskService.UpdateTicketAsync(editingTicket);
+            }
+            else
+            {
+                // For create mode, call the Create method
+                result = await HelpDeskService.CreateTicketAsync(formModel);
+            }
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add(isEditMode ? "Ticket updated successfully!" : "Ticket created successfully!", Severity.Success);
+                successMessage = result;
+                CloseDrawer();
+                await LoadTickets();
+            }
+            else
+            {
+                // Show the actual error message
+                Snackbar.Add(result, Severity.Error, config => { config.VisibleStateDuration = 8000; });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in SaveTicket: {ex}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteTicket(HelpDeskTicket ticket)
+    {
+        if (ticket.Status != TicketStatus.OPEN)
+        {
+            Snackbar.Add("Cannot delete ticket that is not in Open status", Severity.Warning);
+            return;
+        }
+
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Ticket",
+            $"Are you sure you want to delete ticket '{ticket.TicketNo}'? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                CloseButton = true
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var deleted = await HelpDeskService.DeleteTicketAsync(ticket.TicketNo, ticket.ODataEtag);
+
+                if (deleted)
+                {
+                    Snackbar.Add($"Ticket {ticket.TicketNo} deleted successfully", Severity.Success);
+                    await LoadTickets();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete ticket", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task RefreshList()
+    {
+        await LoadTickets();
+        Snackbar.Add("List refreshed successfully", Severity.Success);
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        statusFilter = "";
+        categoryFilter = "";
+    }
+
+    private void ViewDetails(HelpDeskTicket ticket)
+    {
+        var parameters = new DialogParameters { ["Ticket"] = ticket };
+        DialogService.Show<HelpDeskTicketDetails>("Ticket Details", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+    }
+
+    private List<string> GetUniqueCategories()
+    {
+        return tickets
+            .Select(t => t.Category)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
+    }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private string GetPriorityColorStyle(string? priority)
+    {
+        return (priority ?? "") switch
+        {
+            "Urgent" => "color: #f44336;",
+            "High" => "color: #ff9800;",
+            "Medium" => "color: #D4A853;",
+            "Low" => "color: #4caf50;",
+            _ => "color: #666;"
+        };
+    }
+
+    private RenderFragment GetPriorityChip(string? priority)
+    {
+        var (colorStyle, icon) = (priority ?? "Medium") switch
+        {
+            "Urgent" => ("background-color: #f44336; color: white;", Icons.Material.Filled.PriorityHigh),
+            "High" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.ArrowUpward),
+            "Medium" => ("background-color: #D4A853; color: white;", Icons.Material.Filled.Remove),
+            "Low" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.ArrowDownward),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@priority</MudChip>;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "Open") switch
+        {
+            "Open" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.FiberNew),
+            "In Progress" => ("background-color: #D4A853; color: white;", Icons.Material.Filled.Autorenew),
+            "Pending" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.HourglassBottom),
+            "Resolved" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Closed" => ("background-color: #666; color: white;", Icons.Material.Filled.Lock),
+            "Cancelled" => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

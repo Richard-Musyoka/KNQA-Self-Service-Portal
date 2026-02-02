@@ -1,0 +1,290 @@
+﻿@using KNQASelfService.Models
+@using MudBlazor
+
+<MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true">
+    <DialogContent>
+        @if (Ticket != null)
+        {
+            <MudGrid Spacing="2">
+                <!-- Header Section -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 8px;">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                <MudIcon Icon="@Icons.Material.Filled.ConfirmationNumber"
+                                         Size="Size.Large"
+                                         Style="color:#D4A853;" />
+                                <div>
+                                    <MudText Typo="Typo.h5" Style="color:white;font-weight:600;">
+                                        Ticket Details
+                                    </MudText>
+                                    <MudText Typo="Typo.body2" Style="color:rgba(255,255,255,0.8);">
+                                        Ticket @Ticket.TicketNo
+                                    </MudText>
+                                </div>
+                            </MudStack>
+
+                            <MudStack Spacing="1" AlignItems="AlignItems.End">
+                                @GetStatusChip(Ticket.Status)
+                                @GetPriorityChip(Ticket.Priority)
+                            </MudStack>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Ticket Information -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #00286E;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+                            Ticket Information
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Category</MudText>
+                                <MudChip T="string" Style="background:#D4A853;color:white;">
+                                    @Ticket.Category
+                                </MudChip>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Location</MudText>
+                                <MudText Typo="Typo.body1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" Style="color: #D4A853;" />
+                                    @Ticket.Location
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Description</MudText>
+                                <MudPaper Class="pa-3 mt-2"
+                                          Elevation="0"
+                                          Style="background-color: #f5f5f5;">
+                                    <MudText Typo="Typo.body2">@Ticket.Description</MudText>
+                                </MudPaper>
+                            </MudItem>
+
+                            @if (!string.IsNullOrEmpty(Ticket.ShortcutDimension3Code))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Dimension Code</MudText>
+                                    <MudText Typo="Typo.body1">@Ticket.ShortcutDimension3Code</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Employee Information -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #D4A853;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-2" />
+                            Requester Information
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Employee No</MudText>
+                                <MudText Typo="Typo.body1">@Ticket.EmployeeNo</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Employee Name</MudText>
+                                <MudText Typo="Typo.body1">@Ticket.EmployeeName</MudText>
+                            </MudItem>
+
+                            @if (!string.IsNullOrEmpty(Ticket.ContactEmail))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Contact Email</MudText>
+                                    <MudText Typo="Typo.body1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Email" Size="Size.Small" Style="color: #D4A853;" />
+                                        @Ticket.ContactEmail
+                                    </MudText>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Ticket.ContactPhone))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Contact Phone</MudText>
+                                    <MudText Typo="Typo.body1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" Style="color: #D4A853;" />
+                                        @Ticket.ContactPhone
+                                    </MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Timeline -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #4caf50;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Timeline" Class="mr-2" />
+                            Timeline
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Created Date</MudText>
+                                <MudText Typo="Typo.body1">
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Style="color: #D4A853;" />
+                                    @ParseDate(Ticket.CreatedDate)
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Created Time</MudText>
+                                <MudText Typo="Typo.body1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="color: #D4A853;" />
+                                    @Ticket.CreatedTime
+                                </MudText>
+                            </MudItem>
+
+                            @if (!string.IsNullOrEmpty(Ticket.LastModifiedDate))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Last Modified Date</MudText>
+                                    <MudText Typo="Typo.body1">@ParseDate(Ticket.LastModifiedDate)</MudText>
+                                </MudItem>
+
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Last Modified Time</MudText>
+                                    <MudText Typo="Typo.body1">@Ticket.LastModifiedTime</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Assignment & Resolution -->
+                @if (!string.IsNullOrEmpty(Ticket.AssignedTo) || !string.IsNullOrEmpty(Ticket.ResolutionNotes))
+                {
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-4 mb-4"
+                                  Elevation="1"
+                                  Style="border-radius:8px;border-left:4px solid #2196f3;">
+                            <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" />
+                                Assignment & Resolution
+                            </MudText>
+
+                            <MudGrid>
+                                @if (!string.IsNullOrEmpty(Ticket.AssignedTo))
+                                {
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2">Assigned To</MudText>
+                                        <MudText Typo="Typo.body1">@Ticket.AssignedTo</MudText>
+                                    </MudItem>
+
+                                    @if (!string.IsNullOrEmpty(Ticket.AssignedToName))
+                                    {
+                                        <MudItem xs="12" sm="6">
+                                            <MudText Typo="Typo.subtitle2">Assignee Name</MudText>
+                                            <MudText Typo="Typo.body1">@Ticket.AssignedToName</MudText>
+                                        </MudItem>
+                                    }
+                                }
+
+                                @if (!string.IsNullOrEmpty(Ticket.ResolutionDate))
+                                {
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2">Resolution Date</MudText>
+                                        <MudText Typo="Typo.body1">@ParseDate(Ticket.ResolutionDate)</MudText>
+                                    </MudItem>
+
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2">Resolution Time</MudText>
+                                        <MudText Typo="Typo.body1">@Ticket.ResolutionTime</MudText>
+                                    </MudItem>
+                                }
+
+                                @if (!string.IsNullOrEmpty(Ticket.ResolutionNotes))
+                                {
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.subtitle2">Resolution Notes</MudText>
+                                        <MudPaper Class="pa-3 mt-2"
+                                                  Elevation="0"
+                                                  Style="background-color: #f5f5f5;">
+                                            <MudText Typo="Typo.body2">@Ticket.ResolutionNotes</MudText>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            <div style="text-align: center; padding: 60px 20px;">
+                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No ticket data available</MudText>
+                <MudText Typo="Typo.body2" Style="color: #999;">Please select a valid ticket</MudText>
+            </div>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter]
+    public HelpDeskTicket? Ticket { get; set; }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "Not specified";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private RenderFragment GetPriorityChip(string? priority)
+    {
+        var (colorStyle, icon) = (priority ?? "Medium") switch
+        {
+            "Urgent" => ("background-color: #f44336; color: white;", Icons.Material.Filled.PriorityHigh),
+            "High" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.ArrowUpward),
+            "Medium" => ("background-color: #D4A853; color: white;", Icons.Material.Filled.Remove),
+            "Low" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.ArrowDownward),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@priority</MudChip>;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "Open") switch
+        {
+            "Open" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.FiberNew),
+            "In Progress" => ("background-color: #D4A853; color: white;", Icons.Material.Filled.Autorenew),
+            "Pending" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.HourglassBottom),
+            "Resolved" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Closed" => ("background-color: #666; color: white;", Icons.Material.Filled.Lock),
+            "Cancelled" => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

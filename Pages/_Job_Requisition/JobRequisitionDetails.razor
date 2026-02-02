@@ -1,0 +1,275 @@
+﻿@* JobRequisitionDetails.razor *@
+@using KNQASelfService.Models
+@using MudBlazor
+
+<MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true">
+    <DialogContent>
+        @if (JobRequisition != null)
+        {
+            <MudGrid Spacing="2">
+                <!-- Header Section -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 8px;">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                <MudIcon Icon="@Icons.Material.Filled.Work"
+                                         Size="Size.Large"
+                                         Style="color:#D4A853;" />
+                                <div>
+                                    <MudText Typo="Typo.h5" Style="color:white;font-weight:600;">
+                                        Job Requisition Details
+                                    </MudText>
+                                    <MudText Typo="Typo.body2" Style="color:rgba(255,255,255,0.8);">
+                                        Requisition #@JobRequisition.ApplicationNo
+                                    </MudText>
+                                </div>
+                            </MudStack>
+
+                            <MudChip T="string"
+                                     Color="@GetStatusColor(JobRequisition.Status)"
+                                     Size="Size.Small"
+                                     Style="font-weight:600;color:white;">
+                                @JobRequisition.Status
+                            </MudChip>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Position Information -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #00286E;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.BusinessCenter" Class="mr-2" />
+                            Position Information
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Job Position</MudText>
+                                <MudText Typo="Typo.h6" Style="color:#00286E;">
+                                    @JobRequisition.JobPosition
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.subtitle2">Employment Type</MudText>
+                                <MudChip T="string" Style="background:#D4A853;color:white;">
+                                    @JobRequisition.EmploymentType
+                                </MudChip>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.subtitle2">Positions</MudText>
+                                <MudText Typo="Typo.h6" Style="color:#00286E;">
+                                    @JobRequisition.Positions
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.subtitle2">Job Grade</MudText>
+                                <MudText Typo="Typo.h6" Style="color:#00286E;">
+                                    @JobRequisition.JobGrade
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Gross Salary</MudText>
+                                <MudText Typo="Typo.h6" Style="color:#D4A853;">
+                                    @JobRequisition.GrossSalary.ToString("N2")
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Contract Period</MudText>
+                                <MudText>@JobRequisition.ContractPeriod</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Has Gratuity</MudText>
+                                <MudChip T="string" Color="@(JobRequisition.HasGratuity? Color.Success: Color.Default)">
+                                    @(JobRequisition.HasGratuity ? "Yes" : "No")
+                                </MudChip>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Department Information -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #D4A853;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Business" Class="mr-2" />
+                            Department Information
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Department Code</MudText>
+                                <MudText>@JobRequisition.DepartmentCode</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Directorate Name</MudText>
+                                <MudText>@JobRequisition.DirectorateName</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Reason for Recruitment</MudText>
+                                <MudText>@JobRequisition.ReasonForRecruitment</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Timeline Information -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #4caf50;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.DateRange" Class="mr-2" />
+                            Timeline
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.subtitle2">Document Date</MudText>
+                                <MudText>@ParseDate(JobRequisition.DocumentDate)</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.subtitle2">Application Start</MudText>
+                                <MudText>@ParseDate(JobRequisition.ApplicationStartDate)</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.subtitle2">Application Deadline</MudText>
+                                <MudText Style="@GetDeadlineStyle(JobRequisition.ApplicationDeadline)">
+                                    @ParseDate(JobRequisition.ApplicationDeadline)
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Expected Reporting Date</MudText>
+                                <MudText>@ParseDate(JobRequisition.ExpectedReportingDate)</MudText>
+                            </MudItem>
+
+                            @if (JobRequisition.ShortListingRequired)
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Shortlisting Threshold</MudText>
+                                    <MudText>@JobRequisition.ShortlistingThreshold</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Requisition Details -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #ff9800;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-2" />
+                            Requisition Details
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Requested By</MudText>
+                                <MudText>@JobRequisition.RequestedBy</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Raised By</MudText>
+                                <MudText>@JobRequisition.RaisedBy</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Employee No.</MudText>
+                                <MudText>@JobRequisition.EmployeeNo</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Posted</MudText>
+                                <MudChip T="string" Color="@(JobRequisition.Posted? Color.Success: Color.Default)">
+                                    @(JobRequisition.Posted ? "Yes" : "No")
+                                </MudChip>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Shortlisting Required</MudText>
+                                <MudChip T="string" Color="@(JobRequisition.ShortListingRequired? Color.Success: Color.Default)">
+                                    @(JobRequisition.ShortListingRequired ? "Yes" : "No")
+                                </MudChip>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+        else
+        {
+            <div style="text-align: center; padding: 60px 20px;">
+                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No job requisition data available</MudText>
+                <MudText Typo="Typo.body2" Style="color: #999;">Please select a valid job requisition</MudText>
+            </div>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter]
+    public JobRequisition? JobRequisition { get; set; }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "Not specified";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private string GetDeadlineStyle(string? deadline)
+    {
+        if (string.IsNullOrEmpty(deadline))
+            return "";
+
+        if (DateTime.TryParse(deadline, out var date))
+        {
+            if (date < DateTime.Today)
+                return "color: #f44336; font-weight: bold;";
+            else if (date <= DateTime.Today.AddDays(7))
+                return "color: #D4A853; font-weight: bold;";
+            else
+                return "color: #4caf50;";
+        }
+
+        return "";
+    }
+
+    private Color GetStatusColor(string? status) => (status ?? "Unknown") switch
+    {
+        "Approved" => Color.Success,
+        "Pending" => Color.Warning,
+        "Rejected" => Color.Error,
+        "Posted" => Color.Info,
+        "Draft" => Color.Default,
+        _ => Color.Info
+    };
+}

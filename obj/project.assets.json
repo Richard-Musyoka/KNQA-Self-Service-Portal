@@ -822,7 +822,7 @@
           }
         }
       },
-      "MudBlazor/8.9.0": {
+      "MudBlazor/8.15.0": {
         "type": "package",
         "dependencies": {
           "Microsoft.AspNetCore.Components": "8.0.12",
@@ -2547,10 +2547,10 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "MudBlazor/8.9.0": {
-      "sha512": "KdjXMXiSvl6uNr+S2YDhGI1aX/TULMQejQSniMlp6QTss35NKFrJyrMAmN082HNvOObuKdnTtLpntJ7rM5Op/A==",
+    "MudBlazor/8.15.0": {
+      "sha512": "iOJEnQ6tYGQPfPJaUazyC8H6pcczgaMX7vhUzrJPpB0WqEXNozwMfSzoOe2/JZmVWJcUfYZgKBeBU2Z27XY7Sw==",
       "type": "package",
-      "path": "mudblazor/8.9.0",
+      "path": "mudblazor/8.15.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -2568,7 +2568,7 @@
         "lib/net8.0/MudBlazor.xml",
         "lib/net9.0/MudBlazor.dll",
         "lib/net9.0/MudBlazor.xml",
-        "mudblazor.8.9.0.nupkg.sha512",
+        "mudblazor.8.15.0.nupkg.sha512",
         "mudblazor.nuspec",
         "staticwebassets/MudBlazor.min.css",
         "staticwebassets/MudBlazor.min.js"
@@ -3516,7 +3516,7 @@
       "Microsoft.EntityFrameworkCore.SqlServer >= 8.0.4",
       "Microsoft.Extensions.Caching.Memory >= 8.0.1",
       "Microsoft.Identity.Client >= 4.73.1",
-      "MudBlazor >= 8.9.0",
+      "MudBlazor >= 8.15.0",
       "Newtonsoft.Json >= 13.0.4",
       "RestSharp >= 112.0.0"
     ]
@@ -3606,7 +3606,7 @@
           },
           "MudBlazor": {
             "target": "Package",
-            "version": "[8.9.0, )"
+            "version": "[8.15.0, )"
           },
           "Newtonsoft.Json": {
             "target": "Package",

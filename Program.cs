@@ -23,6 +23,18 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddHttpContextAccessor();
 // Register HttpClient
 builder.Services.AddHttpClient();
+// Register Leave Plan Service
+builder.Services.AddScoped<ILeavePlanService, LeavePlanService>();
+// Add services
+builder.Services.AddScoped<ITransportService, TransportService>();
+builder.Services.AddScoped<IIncidentManagementService, IncidentManagementService>();
+builder.Services.AddScoped<IHelpDeskService, HelpDeskService>();
+// Add to Program.cs or equivalent
+builder.Services.AddScoped<IJobRequisitionService, JobRequisitionService>();
+builder.Services.AddScoped<IRoomBookingService, RoomBookingService>();
+builder.Services.AddScoped<IVehicleMaintenanceService, VehicleMaintenanceService>();
+builder.Services.AddScoped<ITrainingRequestService, TrainingRequestService>();
+builder.Services.AddScoped<ITrainingEvaluationService, TrainingEvaluationService>();
 
 builder.Services.AddHttpClient("KNQASelfServiceClient", client =>
 {

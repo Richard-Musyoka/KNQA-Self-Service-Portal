@@ -1,0 +1,275 @@
+﻿@* Components/MaintenanceDetailsDialog.razor *@
+@using KNQASelfService.Models
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <!-- Header -->
+            <MudItem xs="12">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                        <MudIcon Icon="@Icons.Material.Filled.Build" Style="margin-right: 8px;" />
+                        Maintenance Record Details
+                    </MudText>
+                    @GetStatusChip(Record.Status)
+                </MudStack>
+            </MudItem>
+
+            <!-- Record Information -->
+            <MudItem xs="12">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="background-color: #f5f5f5; border-radius: 8px;">
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Record Number:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                @Record.No
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Created:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                @FormatDate(Record.CreatedDate) @Record.CreatedTime
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Vehicle Information -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px; border-left: 4px solid #00286E;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Small" Style="margin-right: 8px;" />
+                        Vehicle Information
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Registration No:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">@Record.VehicleRegistrationNo</MudText>
+                        </MudItem>
+                        @if (Record.VehicleDetails != null)
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Description:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">@Record.VehicleDetails.Description</MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Chassis No:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">@Record.VehicleDetails.ChassisNo</MudText>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Maintenance Details -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px; border-left: 4px solid #D4A853;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.BuildCircle" Size="Size.Small" Style="margin-right: 8px;" />
+                        Maintenance Details
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Type:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">@Record.MaintenanceType</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Date:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">@FormatDate(Record.MaintenanceDate)</MudText>
+                        </MudItem>
+                        @if (!string.IsNullOrEmpty(Record.MaintenanceVendorNo))
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Vendor:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">@Record.MaintenanceVendorNo</MudText>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Mileage Information -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" Style="margin-right: 8px;" />
+                        Mileage Information
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Pre-Service:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                @Record.PreServiceMileage.ToString("N0") km
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Post-Service:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                @(Record.PostServiceMileage > 0 ? Record.PostServiceMileage.ToString("N0") + " km" : "N/A")
+                            </MudText>
+                        </MudItem>
+                        @if (Record.MileageDifference != 0)
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Difference:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                    @Record.MileageDifference.ToString("N0") km
+                                </MudText>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Cost Information -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px; border-left: 4px solid #4caf50;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Size="Size.Small" Style="margin-right: 8px;" />
+                        Cost Information
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Repair Cost:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                KES @Record.TotalRepairCost.ToString("N2")
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Maintenance Cost:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                KES @Record.TotalMaintenanceCost.ToString("N2")
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Total Cost:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                KES @Record.TotalCost.ToString("N2")
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Service Description -->
+            <MudItem xs="12">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Style="margin-right: 8px;" />
+                        Service Description
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="color: #333; white-space: pre-line;">@Record.ServiceDescription</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Next Service Information -->
+            @if (!string.IsNullOrEmpty(Record.NextServiceDate))
+            {
+                <MudItem xs="12" md="6">
+                    <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px; border-left: 4px solid #ff9800;">
+                        <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Upcoming" Size="Size.Small" Style="margin-right: 8px;" />
+                            Next Service
+                        </MudText>
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Date:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">@FormatDate(Record.NextServiceDate)</MudText>
+                            </MudItem>
+                            @if (Record.NextServiceMileage > 0)
+                            {
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Mileage:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">@Record.NextServiceMileage.ToString("N0") km</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            <!-- Remarks -->
+            @if (!string.IsNullOrEmpty(Record.Remarks))
+            {
+                <MudItem xs="12" md="@(string.IsNullOrEmpty(Record.NextServiceDate) ? 12 : 6)">
+                    <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                        <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Notes" Size="Size.Small" Style="margin-right: 8px;" />
+                            Remarks
+                        </MudText>
+                        <MudText Typo="Typo.body2" Style="color: #333; white-space: pre-line;">@Record.Remarks</MudText>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            <!-- Created By -->
+            <MudItem xs="12">
+                <MudPaper Elevation="0" Class="pa-3" Style="background-color: #00286E; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: white; font-weight: 600; margin-bottom: 8px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="margin-right: 8px;" />
+                        Created By
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.8);">Created By:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: white;">@Record.CreatedBy</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.8);">Date & Time:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: white;">@FormatDate(Record.CreatedDate) @Record.CreatedTime</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel" Style="color: #666;">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter]
+    public Models.VehicleMaintenance Record { get; set; } = new();
+
+    private void Cancel()
+    {
+        // Close dialog
+    }
+
+    private string FormatDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString))
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "New") switch
+        {
+            "New" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.NewReleases),
+            "In Progress" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.Build),
+            "Completed" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Pending Approval" => ("background-color: #9c27b0; color: white;", Icons.Material.Filled.PendingActions),
+            "Approved" => ("background-color: #009688; color: white;", Icons.Material.Filled.ThumbUp),
+            "Rejected" => ("background-color: #f44336; color: white;", Icons.Material.Filled.ThumbDown),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

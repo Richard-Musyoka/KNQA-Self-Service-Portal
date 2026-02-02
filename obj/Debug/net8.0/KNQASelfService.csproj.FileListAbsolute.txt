@@ -265,6 +265,7 @@ C:\Users\Attain\source\repos\KNQASelfService\KNQASelfService\obj\Debug\net8.0\KN
 C:\Users\Attain\source\repos\KNQASelfService\KNQASelfService\obj\Debug\net8.0\KNQASelfService.MvcApplicationPartsAssemblyInfo.cache
 C:\Users\Attain\source\repos\KNQASelfService\KNQASelfService\obj\Debug\net8.0\KNQASelfService.RazorAssemblyInfo.cache
 C:\Users\Attain\source\repos\KNQASelfService\KNQASelfService\obj\Debug\net8.0\KNQASelfService.RazorAssemblyInfo.cs
+C:\Users\Attain\source\repos\KNQASelfService\KNQASelfService\obj\Debug\net8.0\KNQASelfService.sourcelink.json
 C:\Users\Attain\source\repos\KNQASelfService\KNQASelfService\bin\Debug\net8.0\appsettings.Development.json
 C:\Users\Attain\source\repos\KNQASelfService\KNQASelfService\bin\Debug\net8.0\appsettings.json
 C:\Users\Attain\source\repos\KNQASelfService\KNQASelfService\bin\Debug\net8.0\mpesa-callback.json

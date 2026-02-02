@@ -1,0 +1,277 @@
+﻿@using KNQASelfService.Models
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <!-- Header -->
+            <MudItem xs="12">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                        <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Style="margin-right: 8px;" />
+                        Transport Request Details
+                    </MudText>
+                    @GetStatusChip(Request.Status)
+                </MudStack>
+            </MudItem>
+
+            <!-- Request Information -->
+            <MudItem xs="12">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="background-color: #f5f5f5; border-radius: 8px;">
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Request Number:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                @Request.RequestNo
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Request Date:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                @FormatDate(Request.RequestDate)
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Purpose & Destination -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Style="margin-right: 8px;" />
+                        Purpose of Travel
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="color: #333;">@Request.Purpose</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px; border-left: 4px solid #D4A853;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" Style="margin-right: 8px;" />
+                        Destination/Itinerary
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="color: #333;">@Request.Destination</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Trip Details -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="margin-right: 8px;" />
+                        Trip Schedule
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Dates:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                @FormatDate(Request.StartDate) - @FormatDate(Request.EndDate)
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Time:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                @Request.StartTime - @Request.ReturnTime
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Passenger Details -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" Style="margin-right: 8px;" />
+                        Passenger Information
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Employees:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">@Request.NoOfEmployees</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Non-Employees:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">@Request.NoOfNonEmployees</MudText>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Total Passengers:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                @(Request.NoOfEmployees + Request.NoOfNonEmployees)
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Vehicle Information -->
+            @if (!string.IsNullOrWhiteSpace(Request.VehicleAllocated))
+            {
+                <MudItem xs="12" md="6">
+                    <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px; border-left: 4px solid #4caf50;">
+                        <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                            <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Small" Style="margin-right: 8px;" />
+                            Vehicle Allocated
+                        </MudText>
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Vehicle:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">@Request.VehicleDescription</MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Vehicle No:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">@Request.VehicleAllocated</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            <!-- Driver Information -->
+            @if (!string.IsNullOrWhiteSpace(Request.DriverNo))
+            {
+                <MudItem xs="12" md="@(string.IsNullOrWhiteSpace(Request.VehicleAllocated) ? 12 : 6)">
+                    <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px; border-left: 4px solid #ff9800;">
+                        <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="margin-right: 8px;" />
+                            Driver Assigned
+                        </MudText>
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Driver:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">@Request.DriverName</MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Driver No:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">@Request.DriverNo</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            <!-- Odometer Readings -->
+            @if (Request.OdometerBefore > 0 || Request.OdometerAfter > 0)
+            {
+                <MudItem xs="12">
+                    <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                        <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Speed" Size="Size.Small" Style="margin-right: 8px;" />
+                            Odometer Readings
+                        </MudText>
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Before Trip:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">@Request.OdometerBefore km</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">After Trip:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">@Request.OdometerAfter km</MudText>
+                            </MudItem>
+                            @if (Request.OdometerBefore > 0 && Request.OdometerAfter > 0)
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Distance Travelled:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                        @(Request.OdometerAfter - Request.OdometerBefore) km
+                                    </MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            <!-- Approvals -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Approval" Size="Size.Small" Style="margin-right: 8px;" />
+                        Approval Status
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Approvals:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">@Request.NoOfApprovals</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Confirmed Employees:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">@Request.NoOfConfirmedEmployees</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Requestor Information -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3" Style="background-color: #00286E; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: white; font-weight: 600; margin-bottom: 8px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="margin-right: 8px;" />
+                        Requested By
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.8);">Employee:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: white;">@Request.EmployeeName</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.8);">Employee No:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: white;">@Request.EmployeeNo</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel" Style="color: #666;">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter]
+    public Models.TransportRequest Request { get; set; } = new();
+
+    private void Cancel()
+    {
+        
+    }
+
+    private string FormatDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString))
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "Pending") switch
+        {
+            "Pending Approval" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.PendingActions),
+            "Approved" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Rejected" => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel),
+            "Completed" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.DoneAll),
+            "Cancelled" => ("background-color: #666; color: white;", Icons.Material.Filled.DoNotDisturb),
+            "In Progress" => ("background-color: #D4A853; color: white;", Icons.Material.Filled.AccessTime),
+            "Vehicle Allocated" => ("background-color: #9c27b0; color: white;", Icons.Material.Filled.DirectionsCar),
+            "Driver Assigned" => ("background-color: #009688; color: white;", Icons.Material.Filled.Person),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

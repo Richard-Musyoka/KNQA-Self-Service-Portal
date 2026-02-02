@@ -1,0 +1,1118 @@
+﻿@* Pages/VehicleMaintenance.razor *@
+@page "/vehicle-maintenance"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IVehicleMaintenanceService MaintenanceService
+@inject ICurrentUserService CurrentUserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Vehicle Maintenance</PageTitle>
+
+<MudLayout>
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="600px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Build)"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                @(isEditMode ? "Edit Maintenance" : "New Maintenance Record")
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@formValid">
+                <MudGrid Spacing="3">
+                    @if (isEditMode && editingRecord != null)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingRecord.No"
+                                          Label="Maintenance No"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingRecord.Status"
+                                          Label="Status"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+
+                    <!-- Vehicle Selection -->
+                    <MudItem xs="12">
+                        <MudSelect T="FleetVehicle"
+                                   @bind-Value="selectedVehicle"
+                                   Label="Select Vehicle *"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   ToStringFunc="@(vehicle => vehicle != null ? $"{vehicle.Description} ({vehicle.RegistrationNo})" : "")"
+                                   SearchFunc="@SearchVehicles"
+                                   Clearable="false">
+                            <ChildContent>
+                                @foreach (var vehicle in fleetVehicles)
+                                {
+                                    <MudSelectItem Value="@vehicle">
+                                        <div style="padding: 8px;">
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                                                @vehicle.Description
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Style="color: #666;">
+                                                @vehicle.RegistrationNo • @vehicle.VehicleType • Chassis: @vehicle.ChassisNo
+                                            </MudText>
+                                            <div class="mt-1">
+                                                <MudChip T="string" Size="Size.Small" Style="background-color: #4caf50; color: white;">
+                                                    Status: @vehicle.Status
+                                                </MudChip>
+                                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">
+                                                    Capacity: @vehicle.Capacity
+                                                </MudChip>
+                                            </div>
+                                        </div>
+                                    </MudSelectItem>
+                                }
+                            </ChildContent>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- FA Code No -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.FACodeNo"
+                                      Label="FA Code No"
+                                      Variant="Variant.Outlined"
+                                      HelperText="Fixed Asset Code Number" />
+                    </MudItem>
+
+                    <!-- Maintenance Type -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.MaintenanceType"
+                                   Label="Maintenance Type *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            <MudSelectItem Value="@MaintenanceType.NEW">New</MudSelectItem>
+                            <MudSelectItem Value="@MaintenanceType.REPAIR">Repair/Maintenance</MudSelectItem>
+                            <MudSelectItem Value="@MaintenanceType.SCHEDULED">Scheduled Service</MudSelectItem>
+                            <MudSelectItem Value="@MaintenanceType.PREVENTIVE">Preventive Maintenance</MudSelectItem>
+                            <MudSelectItem Value="@MaintenanceType.CORRECTIVE">Corrective Maintenance</MudSelectItem>
+                            <MudSelectItem Value="@MaintenanceType.EMERGENCY">Emergency Repair</MudSelectItem>
+                            <MudSelectItem Value="@MaintenanceType.BREAKDOWN">Breakdown Maintenance</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Maintenance Date -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="maintenanceDate"
+                                       Label="Maintenance Date *"
+                                       DateFormat="yyyy-MM-dd"
+                                       Required="true"
+                                       Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <!-- Pre-Service Mileage -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.PreServiceMileage"
+                                      Label="Pre-Service Mileage (km)"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number"
+                                      Min="0" />
+                    </MudItem>
+
+                    <!-- Costs -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.TotalRepairCost"
+                                      Label="Repair Cost"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number"
+                                      Min="0"
+                                      Adornment="Adornment.End"
+                                      AdornmentText="KES" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.TotalMaintenanceCost"
+                                      Label="Maintenance Cost"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number"
+                                      Min="0"
+                                      Adornment="Adornment.End"
+                                      AdornmentText="KES" />
+                    </MudItem>
+
+                    <!-- Total Cost Display -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-2" Elevation="0" Style="background-color: #f5f5f5; border-radius: 4px;">
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Total Cost:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                        KES @CalculateTotalCost().ToString("N2")
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Cost Breakup:</MudText>
+                                    <MudText Typo="Typo.caption">
+                                        Repair: @formModel.TotalRepairCost.ToString("N2") • 
+                                        Maintenance: @formModel.TotalMaintenanceCost.ToString("N2")
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Vendor Selection -->
+                    <!-- Vendor Selection -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.MaintenanceVendorNo"
+                                      Label="Maintenance Vendor Name"
+                                      Variant="Variant.Outlined"
+                                      HelperText="Enter the vendor code (e.g., Total, Suba Motors, etc.)" />
+                    </MudItem>
+
+                    <!-- Service Description -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.ServiceDescription"
+                                      Label="Service Description *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Lines="3"
+                                      Counter="1000"
+                                      MaxLength="1000" />
+                    </MudItem>
+
+                    <!-- Next Service Information -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="nextServiceDate"
+                                       Label="Next Service Date"
+                                       DateFormat="yyyy-MM-dd"
+                                       Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.NextServiceMileage"
+                                      Label="Next Service Mileage (km)"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number"
+                                      Min="0" />
+                    </MudItem>
+
+                    <!-- Remarks -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.Remarks"
+                                      Label="Remarks"
+                                      Variant="Variant.Outlined"
+                                      Lines="2"
+                                      Counter="500"
+                                      MaxLength="500" />
+                    </MudItem>
+
+                    <!-- Maintenance Summary -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-3"
+                                  Elevation="0"
+                                  Style="background-color: #f5f5f5; border-left: 4px solid #D4A853;">
+                            <MudText Typo="Typo.body2" Style="color: #00286E; margin-bottom: 12px;">
+                                <strong>Maintenance Summary</strong>
+                            </MudText>
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Vehicle:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(selectedVehicle?.DisplayInfo ?? "Not selected")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Type:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@formModel.MaintenanceType</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Date:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@maintenanceDate?.ToString("dd MMM yyyy")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Mileage:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@formModel.PreServiceMileage.ToString("N0") km</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Total Cost:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>KES @CalculateTotalCost().ToString("N2")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Next Service:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(nextServiceDate?.ToString("dd MMM yyyy") ?? "Not set")</strong>
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => SaveMaintenance())"
+                           Disabled="@(!formValid || saving || !IsMaintenanceValid())">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Saving...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Save" Size="Size.Small" />
+                        <span class="ms-2">@(isEditMode ? "Update Record" : "Save Record")</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Build" Style="margin-right: 12px; vertical-align: middle;" />
+                            Vehicle Maintenance
+                        </MudText>
+                        <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                            Manage vehicle maintenance and service records
+                        </MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudStack Row="true" Spacing="2">
+                            <MudButton Variant="Variant.Outlined"
+                                       Style="color: white; border-color: white;"
+                                       StartIcon="@Icons.Material.Filled.Print"
+                                       OnClick="PrintReport">
+                                Print Report
+                            </MudButton>
+                            <MudButton Variant="Variant.Filled"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       Style="background-color: #D4A853; color: white; font-weight: 600;"
+                                       Size="Size.Large"
+                                       OnClick="OpenCreateDrawer">
+                                New Maintenance
+                            </MudButton>
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Error/Success Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => errorMessage = null"
+                          Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => successMessage = null"
+                          Class="mb-4">
+                    @successMessage
+                </MudAlert>
+            }
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </div>
+            }
+            else
+            {
+                <!-- Summary Cards -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Records</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.TotalMaintenance</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.ListAlt" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Completed</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.CompletedMaintenance</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Pending</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.PendingMaintenance</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.PendingActions" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Overdue</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.OverdueMaintenance</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Cost Summary -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="6">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">This Month's Cost</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">
+                                        KES @summaryData.TotalCostThisMonth.ToString("N2")
+                                    </MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="6">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #9c27b0 0%, #ba68c8 100%);">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">This Year's Cost</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">
+                                        KES @summaryData.TotalCostThisYear.ToString("N2")
+                                    </MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.AccountBalance" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Upcoming Maintenance -->
+                @if (summaryData.UpcomingMaintenance.Any())
+                {
+                    <MudPaper Elevation="2" Class="mb-4 pa-4" Style="border-radius: 12px; border-left: 4px solid #ff9800;">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                            <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                                <MudIcon Icon="@Icons.Material.Filled.Upcoming" Style="margin-right: 8px;" />
+                                Upcoming Maintenance
+                            </MudText>
+                            <MudButton Variant="Variant.Text"
+                                       Style="color: #00286E;"
+                                       EndIcon="@Icons.Material.Filled.ArrowForward"
+                                       OnClick="@(() => Navigation.NavigateTo("/upcoming-maintenance"))">
+                                View All
+                            </MudButton>
+                        </MudStack>
+
+                        <MudGrid Spacing="3">
+                            @foreach (var upcoming in summaryData.UpcomingMaintenance.Take(3))
+                            {
+                                <MudItem xs="12" sm="6" md="4">
+                                    <MudPaper Elevation="1" Class="pa-3" Style="@($"border-radius: 8px; border-left: 4px solid {(upcoming.Status == "Overdue" ? "#f44336" : upcoming.Status == "Due Soon" ? "#ff9800" : "#4caf50")};")">
+                                        <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                            @upcoming.VehicleDescription
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Style="color: #666;">
+                                            @upcoming.RegistrationNo • Next Service: @FormatDate(upcoming.NextServiceDate)
+                                        </MudText>
+                                        <div class="mt-2">
+                                            <MudChip T="string" Size="Size.Small" Style="@($"background-color: {(upcoming.Status == "Overdue" ? "#f44336" : upcoming.Status == "Due Soon" ? "#ff9800" : "#4caf50")}; color: white;")">
+                                                @upcoming.Status
+                                            </MudChip>
+                                            <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">
+                                                @upcoming.NextServiceMileage.ToString("N0") km
+                                            </MudChip>
+                                        </div>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                }
+
+                <!-- Maintenance Records Table -->
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853; margin-bottom: 20px">
+                    <MudTable Items="@FilteredRecords"
+                              Hover="true"
+                              Breakpoint="Breakpoint.Sm"
+                              Dense="true"
+                              Striped="true"
+                              Style="border-radius: 12px;">
+                        <ToolBarContent>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.History" Style="color: #00286E;" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">Maintenance Records</MudText>
+                                    <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">@maintenanceRecords.Count records</MudChip>
+                                </MudStack>
+
+                                <MudStack Row="true" Spacing="2">
+                                    <MudTextField @bind-Value="searchTerm"
+                                                  Placeholder="Search records..."
+                                                  Adornment="Adornment.Start"
+                                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                                  IconSize="Size.Medium"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  DebounceInterval="300"
+                                                  Style="min-width: 300px;"
+                                                  Class="mt-0">
+                                    </MudTextField>
+
+                                    <MudSelect @bind-Value="statusFilter"
+                                               Placeholder="Status"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Status</MudSelectItem>
+                                        <MudSelectItem Value="@MaintenanceStatus.NEW">New</MudSelectItem>
+                                        <MudSelectItem Value="@MaintenanceStatus.IN_PROGRESS">In Progress</MudSelectItem>
+                                        <MudSelectItem Value="@MaintenanceStatus.COMPLETED">Completed</MudSelectItem>
+                                        <MudSelectItem Value="@MaintenanceStatus.PENDING_APPROVAL">Pending Approval</MudSelectItem>
+                                        <MudSelectItem Value="@MaintenanceStatus.APPROVED">Approved</MudSelectItem>
+                                        <MudSelectItem Value="@MaintenanceStatus.REJECTED">Rejected</MudSelectItem>
+                                    </MudSelect>
+
+                                    <MudSelect @bind-Value="vehicleFilter"
+                                               Placeholder="Vehicle"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Vehicles</MudSelectItem>
+                                        @foreach (var vehicle in fleetVehicles)
+                                        {
+                                            <MudSelectItem Value="@vehicle.No">@vehicle.Description</MudSelectItem>
+                                        }
+                                    </MudSelect>
+
+                                    <MudTooltip Text="Clear Filters">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                                       Style="color: #666; border: 1px solid #666;"
+                                                       OnClick="ClearFilters" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Refresh">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                                       Style="color: #00286E; border: 1px solid #00286E;"
+                                                       OnClick="RefreshList" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudStack>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>Maintenance No.</MudTh>
+                            <MudTh>Vehicle</MudTh>
+                            <MudTh>Maintenance Type</MudTh>
+                            <MudTh>Date</MudTh>
+                            <MudTh>Mileage</MudTh>
+                            <MudTh>Cost</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Next Service</MudTh>
+                            <MudTh Style="text-align: center;">Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Maintenance No.">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">@context.No</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Vehicle">
+                                <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                    @context.VehicleRegistrationNo
+                                </MudText>
+                                @if (!string.IsNullOrEmpty(context.VehicleDetails?.Description))
+                                {
+                                    <MudText Typo="Typo.caption">@context.VehicleDetails.Description</MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Maintenance Type">
+                                <MudText Typo="Typo.body2">@context.MaintenanceType</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Date">
+                                <MudText Typo="Typo.body2">@FormatDate(context.MaintenanceDate)</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Mileage">
+                                @if (context.PreServiceMileage > 0)
+                                {
+                                    <MudText Typo="Typo.body2">@context.PreServiceMileage.ToString("N0") km</MudText>
+                                    @if (context.PostServiceMileage > 0)
+                                    {
+                                        <MudText Typo="Typo.caption">→ @context.PostServiceMileage.ToString("N0") km</MudText>
+                                    }
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Cost">
+                                <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                    KES @context.TotalCost.ToString("N2")
+                                </MudText>
+                                <MudText Typo="Typo.caption">
+                                    R: @context.TotalRepairCost.ToString("N2") • M: @context.TotalMaintenanceCost.ToString("N2")
+                                </MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                @GetStatusChip(context.Status)
+                            </MudTd>
+                            <MudTd DataLabel="Next Service">
+                                @if (!string.IsNullOrEmpty(context.NextServiceDate))
+                                {
+                                    <MudText Typo="Typo.body2">@FormatDate(context.NextServiceDate)</MudText>
+                                    @if (context.NextServiceMileage > 0)
+                                    {
+                                        <MudText Typo="Typo.caption">@context.NextServiceMileage.ToString("N0") km</MudText>
+                                    }
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Style="color: #999;">Not set</MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Actions" Style="text-align: center;">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Style="color: #00286E;"
+                                                       OnClick="() => ViewDetails(context)" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="@(context.Status == MaintenanceStatus.NEW || context.Status == MaintenanceStatus.IN_PROGRESS ? "Edit Record" : "Cannot edit")">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Size="Size.Small"
+                                                       Style="@(context.Status == MaintenanceStatus.NEW || context.Status == MaintenanceStatus.IN_PROGRESS ? "color: #D4A853;" : "color: #ccc;")"
+                                                       OnClick="() => OpenEditDrawer(context)"
+                                                       Disabled="@(!(context.Status == MaintenanceStatus.NEW || context.Status == MaintenanceStatus.IN_PROGRESS))" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="@(context.Status == MaintenanceStatus.NEW ? "Delete Record" : "Cannot delete")">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Style="@(context.Status == MaintenanceStatus.NEW ? "color: #f44336;" : "color: #ccc;")"
+                                                       OnClick="() => DeleteRecord(context)"
+                                                       Disabled="@(context.Status != MaintenanceStatus.NEW)" />
+                                    </MudTooltip>
+
+                                    @if (context.Status == MaintenanceStatus.NEW || context.Status == MaintenanceStatus.IN_PROGRESS)
+                                    {
+                                        <MudTooltip Text="Complete Maintenance">
+                                            <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                                           Size="Size.Small"
+                                                           Style="color: #4caf50;"
+                                                           OnClick="() => CompleteMaintenance(context)" />
+                                        </MudTooltip>
+                                    }
+                                </MudStack>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div style="text-align: center; padding: 60px 20px;">
+                                <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No maintenance records found</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria or create a new record</MudText>
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private List<Models.VehicleMaintenance> maintenanceRecords = new();
+    private List<Models.FleetVehicle> fleetVehicles = new();
+    private Models.MaintenanceSummary summaryData = new();
+    private bool loading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = "";
+    private string? statusFilter = "";
+    private string? vehicleFilter = "";
+
+    // Drawer variables
+    private bool drawerOpen = false;
+    private bool isEditMode = false;
+    private bool saving = false;
+    private MudForm form;
+    private bool formValid;
+    private Models.VehicleMaintenanceCreate formModel = new();
+    private Models.FleetVehicle? selectedVehicle;
+    private Models.VehicleMaintenance? editingRecord;
+    private DateTime? maintenanceDate = DateTime.Now;
+    private DateTime? nextServiceDate;
+
+    private IEnumerable<Models.VehicleMaintenance> FilteredRecords
+    {
+        get
+        {
+            var filtered = maintenanceRecords.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                filtered = filtered.Where(m =>
+                    (m.No?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (m.VehicleRegistrationNo?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (m.MaintenanceType?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (m.ServiceDescription?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                filtered = filtered.Where(m => m.Status == statusFilter);
+            }
+
+            if (!string.IsNullOrWhiteSpace(vehicleFilter))
+            {
+                filtered = filtered.Where(m => m.VehicleRegistrationNo == vehicleFilter);
+            }
+
+            return filtered.OrderByDescending(m => m.MaintenanceDate).ThenByDescending(m => m.CreatedDate);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("🔍 VehicleMaintenance page initialized");
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            await LoadFleetVehicles();
+            await LoadMaintenanceRecords();
+            await LoadSummary();
+
+            Console.WriteLine($"🔍 Loaded {maintenanceRecords.Count} maintenance records");
+            Console.WriteLine($"🔍 Loaded {fleetVehicles.Count} fleet vehicles");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load data: {ex.Message}";
+            Console.WriteLine($"❌ Error loading data: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadFleetVehicles()
+    {
+        try
+        {
+            fleetVehicles = await MaintenanceService.GetFleetVehiclesAsync();
+            fleetVehicles = fleetVehicles.OrderBy(v => v.Description).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading fleet vehicles: {ex.Message}");
+            fleetVehicles = new List<FleetVehicle>();
+        }
+    }
+
+    private async Task LoadMaintenanceRecords()
+    {
+        try
+        {
+            maintenanceRecords = await MaintenanceService.GetAllMaintenanceRecordsAsync();
+            
+            // Enrich with vehicle details
+            foreach (var record in maintenanceRecords)
+            {
+                var vehicle = fleetVehicles.FirstOrDefault(v => v.No == record.VehicleRegistrationNo);
+                if (vehicle != null)
+                {
+                    record.VehicleDetails = vehicle;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading maintenance records: {ex.Message}");
+            maintenanceRecords = new List<Models.VehicleMaintenance>();
+        }
+    }
+
+    private async Task LoadSummary()
+    {
+        try
+        {
+            summaryData = await MaintenanceService.GetMaintenanceSummaryAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading summary: {ex.Message}");
+            summaryData = new Models.MaintenanceSummary();
+        }
+    }
+
+    private async Task<IEnumerable<Models.FleetVehicle>> SearchVehicles(string value)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return fleetVehicles;
+
+            return fleetVehicles.Where(v =>
+                v.Description.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                v.RegistrationNo.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                v.No.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                v.ChassisNo.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return fleetVehicles;
+        }
+    }
+
+    private void OpenCreateDrawer()
+    {
+        isEditMode = false;
+        editingRecord = null;
+        formModel = new Models.VehicleMaintenanceCreate
+        {
+            CreatedBy = CurrentUserService.GetEmployeeNoAsync().Result
+        };
+        selectedVehicle = null;
+        maintenanceDate = DateTime.Now;
+        nextServiceDate = DateTime.Now.AddMonths(6); // Default to 6 months later
+
+        formValid = false;
+        drawerOpen = true;
+        StateHasChanged();
+    }
+
+    private async void OpenEditDrawer(Models.VehicleMaintenance record)
+    {
+        if (record.Status != MaintenanceStatus.NEW && record.Status != MaintenanceStatus.IN_PROGRESS)
+        {
+            Snackbar.Add("Cannot edit record that is not in New or In Progress status", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            // Fetch the latest version with all fields
+            var currentRecord = await MaintenanceService.GetMaintenanceRecordAsync(record.No);
+
+            if (currentRecord == null)
+            {
+                Snackbar.Add("Could not load record details", Severity.Error);
+                return;
+            }
+
+            isEditMode = true;
+            editingRecord = currentRecord;
+
+            // Find the vehicle
+            selectedVehicle = fleetVehicles.FirstOrDefault(v => v.No == currentRecord.VehicleRegistrationNo);
+
+            // Parse dates
+            if (DateTime.TryParse(currentRecord.MaintenanceDate, out var maintDate))
+                maintenanceDate = maintDate;
+
+            if (!string.IsNullOrEmpty(currentRecord.NextServiceDate) && 
+                DateTime.TryParse(currentRecord.NextServiceDate, out var nextDate))
+                nextServiceDate = nextDate;
+
+            formModel = new Models.VehicleMaintenanceCreate
+            {
+                FACodeNo = currentRecord.FACodeNo,
+                VehicleRegistrationNo = currentRecord.VehicleRegistrationNo,
+                MaintenanceType = currentRecord.MaintenanceType,
+                PreServiceMileage = currentRecord.PreServiceMileage,
+                TotalRepairCost = currentRecord.TotalRepairCost,
+                TotalMaintenanceCost = currentRecord.TotalMaintenanceCost,
+                MaintenanceVendorNo = currentRecord.MaintenanceVendorNo,
+                ServiceDescription = currentRecord.ServiceDescription,
+                NextServiceMileage = currentRecord.NextServiceMileage,
+                Remarks = currentRecord.Remarks,
+                CreatedBy = currentRecord.CreatedBy
+            };
+
+            drawerOpen = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading record for edit: {ex.Message}");
+            Snackbar.Add("Failed to load record for editing", Severity.Error);
+        }
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+        formModel = new Models.VehicleMaintenanceCreate();
+        editingRecord = null;
+        selectedVehicle = null;
+    }
+
+    private bool IsMaintenanceValid()
+    {
+        if (selectedVehicle == null) return false;
+        if (string.IsNullOrWhiteSpace(formModel.MaintenanceType)) return false;
+        if (maintenanceDate == null) return false;
+        if (string.IsNullOrWhiteSpace(formModel.ServiceDescription)) return false;
+        if (formModel.PreServiceMileage < 0) return false;
+        if (formModel.TotalRepairCost < 0) return false;
+        if (formModel.TotalMaintenanceCost < 0) return false;
+
+        return true;
+    }
+
+    private decimal CalculateTotalCost()
+    {
+        return formModel.TotalRepairCost + formModel.TotalMaintenanceCost;
+    }
+
+    private async Task SaveMaintenance()
+    {
+        try
+        {
+            await form.Validate();
+
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            if (!IsMaintenanceValid())
+            {
+                Snackbar.Add("Please check your maintenance details", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            // Prepare the maintenance record
+            formModel.VehicleRegistrationNo = selectedVehicle.No;
+            formModel.MaintenanceDate = maintenanceDate.Value.ToString("yyyy-MM-dd");
+            
+            if (nextServiceDate.HasValue)
+            {
+                formModel.NextServiceDate = nextServiceDate.Value.ToString("yyyy-MM-dd");
+            }
+
+            Console.WriteLine($"📤 {(isEditMode ? "Updating" : "Creating")} maintenance record:");
+            Console.WriteLine($"   Vehicle: {formModel.VehicleRegistrationNo}");
+            Console.WriteLine($"   Type: {formModel.MaintenanceType}");
+            Console.WriteLine($"   Date: {formModel.MaintenanceDate}");
+            Console.WriteLine($"   Cost: KES {CalculateTotalCost():N2}");
+
+            string result;
+            if (isEditMode && editingRecord != null)
+            {
+                // Update the existing record with new values
+                editingRecord.VehicleRegistrationNo = formModel.VehicleRegistrationNo;
+                editingRecord.MaintenanceType = formModel.MaintenanceType;
+                editingRecord.MaintenanceDate = formModel.MaintenanceDate;
+                editingRecord.PreServiceMileage = formModel.PreServiceMileage;
+                editingRecord.TotalRepairCost = formModel.TotalRepairCost;
+                editingRecord.TotalMaintenanceCost = formModel.TotalMaintenanceCost;
+                editingRecord.TotalCost = CalculateTotalCost();
+                editingRecord.MaintenanceVendorNo = formModel.MaintenanceVendorNo;
+                editingRecord.ServiceDescription = formModel.ServiceDescription;
+                editingRecord.NextServiceDate = formModel.NextServiceDate;
+                editingRecord.NextServiceMileage = formModel.NextServiceMileage;
+                editingRecord.Remarks = formModel.Remarks;
+
+                result = await MaintenanceService.UpdateMaintenanceRecordAsync(editingRecord);
+            }
+            else
+            {
+                // For create mode, call the Create method
+                result = await MaintenanceService.CreateMaintenanceRecordAsync(formModel);
+            }
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add(isEditMode ? "Record updated successfully!" : "Record created successfully!", Severity.Success);
+                successMessage = result;
+                CloseDrawer();
+                await LoadData();
+            }
+            else
+            {
+                Snackbar.Add(result, Severity.Error, config => { config.VisibleStateDuration = 8000; });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in SaveMaintenance: {ex}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteRecord(Models.VehicleMaintenance record)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Maintenance Record",
+            $"Are you sure you want to delete maintenance record '{record.No}'?",
+            yesText: "Delete Record",
+            cancelText: "Cancel",
+            options: new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                CloseButton = true
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var success = await MaintenanceService.DeleteMaintenanceRecordAsync(record.No, record.ODataEtag);
+
+                if (success)
+                {
+                    Snackbar.Add($"Record {record.No} deleted successfully", Severity.Success);
+                    await LoadData();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete record. It may have been modified by another user.", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task CompleteMaintenance(Models.VehicleMaintenance record)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("Maintenance", record);
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+
+        var dialog = DialogService.Show<CompleteMaintenanceDialog>("Complete Maintenance", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)  
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task RefreshList()
+    {
+        await LoadData();
+        Snackbar.Add("List refreshed successfully", Severity.Success);
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        statusFilter = "";
+        vehicleFilter = "";
+    }
+
+    private void ViewDetails(Models.VehicleMaintenance record)
+    {
+        var parameters = new DialogParameters { ["Record"] = record };
+        DialogService.Show<MaintenanceDetailsDialog>("Maintenance Details", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+    }
+
+    private void PrintReport()
+    {
+        Snackbar.Add("Print feature coming soon!", Severity.Info);
+    }
+
+    private string FormatDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString))
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "New") switch
+        {
+            "New" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.NewReleases),
+            "In Progress" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.Build),
+            "Completed" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Pending Approval" => ("background-color: #9c27b0; color: white;", Icons.Material.Filled.PendingActions),
+            "Approved" => ("background-color: #009688; color: white;", Icons.Material.Filled.ThumbUp),
+            "Rejected" => ("background-color: #f44336; color: white;", Icons.Material.Filled.ThumbDown),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

@@ -1,0 +1,202 @@
+﻿@using KNQASelfService.Models
+@using MudBlazor
+
+<MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true">
+    <DialogContent>
+        @if (LeavePlan != null)
+        {
+            <MudGrid Spacing="2">
+                <!-- Header Section -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 8px;">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                <MudIcon Icon="@Icons.Material.Filled.Info"
+                                         Size="Size.Large"
+                                         Style="color:#D4A853;" />
+                                <div>
+                                    <MudText Typo="Typo.h5" Style="color:white;font-weight:600;">
+                                        Leave Plan Details
+                                    </MudText>
+                                    <MudText Typo="Typo.body2" Style="color:rgba(255,255,255,0.8);">
+                                        Plan #@LeavePlan.ApplicationNo
+                                    </MudText>
+                                </div>
+                            </MudStack>
+
+                            <MudChip T="string"
+                                     Color="@GetStatusColor(LeavePlan.Status)"
+                                     Size="Size.Small"
+                                     Style="font-weight:600;color:white;">
+                                @LeavePlan.Status
+                            </MudChip>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Leave Information -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #00286E;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Event" Class="mr-2" />
+                            Leave Information
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.subtitle2">Leave Type</MudText>
+                                <MudChip T="string" Style="background:#D4A853;color:white;">
+                                    @LeavePlan.LeaveCode
+                                </MudChip>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.subtitle2">Days in Plan</MudText>
+                                <MudText Typo="Typo.h6" Style="color:#00286E;">
+                                    @LeavePlan.DaysInPlan days
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.subtitle2">Entitlement</MudText>
+                                <MudText Typo="Typo.h6" Style="color:#00286E;">
+                                    @LeavePlan.LeaveEntitlement days
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.subtitle2">Earned to Date</MudText>
+                                <MudText Typo="Typo.h6" Style="color:#D4A853;">
+                                    @LeavePlan.LeaveEarnedToDate days
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.subtitle2">Current Balance</MudText>
+                                <MudText Typo="Typo.h6" Style="@GetFullBalanceStyle(LeavePlan.LeaveBalance)">
+                                    @LeavePlan.LeaveBalance days
+                                </MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Plan Period -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #D4A853;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.DateRange" Class="mr-2" />
+                            Plan Period
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Fiscal Start Date</MudText>
+                                <MudText>@ParseDate(LeavePlan.FiscalStartDate)</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Maturity Date</MudText>
+                                <MudText>@ParseDate(LeavePlan.MaturityDate)</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Employee Information -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #4caf50;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-2" />
+                            Employee Information
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Employee No</MudText>
+                                <MudText>@LeavePlan.EmployeeNo</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Name</MudText>
+                                <MudText>@LeavePlan.EmployeeName</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Department</MudText>
+                                <MudText>@LeavePlan.DepartmentCode</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Designation</MudText>
+                                <MudText>@LeavePlan.Designation</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Date of Joining</MudText>
+                                <MudText>@ParseDate(LeavePlan.DateOfJoiningCompany)</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Application Date</MudText>
+                                <MudText>@ParseDate(LeavePlan.ApplicationDate)</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+        else
+        {
+            <div style="text-align: center; padding: 60px 20px;">
+                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No leave plan data available</MudText>
+                <MudText Typo="Typo.body2" Style="color: #999;">Please select a valid leave plan</MudText>
+            </div>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter]
+    public LeavePlan? LeavePlan { get; set; }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "Not specified";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private string GetFullBalanceStyle(int balance)
+    {
+        var colorStyle = balance > 10 ? "color: #4caf50;" :
+                        balance > 5 ? "color: #D4A853;" :
+                        "color: #f44336;";
+
+        return $"{colorStyle}font-weight:700;";
+    }
+
+    private Color GetStatusColor(string? status) => (status ?? "Unknown") switch
+    {
+        "Active" => Color.Success,
+        "Inactive" => Color.Default,
+        _ => Color.Info
+    };
+}

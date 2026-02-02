@@ -1,0 +1,244 @@
+﻿@page "/available-rooms"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IRoomBookingService RoomBookingService
+@inject ICurrentUserService CurrentUserService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Available Meeting Rooms</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+    <!-- Header Section -->
+    <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+        <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Style="margin-right: 12px; vertical-align: middle;" />
+                    Available Meeting Rooms
+                </MudText>
+                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                    Browse and filter available rooms for booking
+                </MudText>
+            </MudItem>
+            <MudItem xs="12" md="6" Style="text-align: right;">
+                <MudButton Variant="Variant.Filled"
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           Style="background-color: #D4A853; color: white; font-weight: 600;"
+                           OnClick="@(() => Navigation.NavigateTo("/room-booking"))">
+                    Back to Bookings
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Filter Section -->
+    <MudPaper Elevation="2" Class="mb-4 pa-4" Style="border-radius: 12px;">
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="4">
+                <MudDatePicker @bind-Date="filterDate"
+                               Label="Filter by Date"
+                               DateFormat="yyyy-MM-dd"
+                               Variant="Variant.Outlined"
+                               MinDate="@DateTime.Now"
+                               MaxDate="@DateTime.Now.AddMonths(3)" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTimePicker @bind-Time="filterStartTime"
+                               Label="Start Time"
+                               Variant="Variant.Outlined"
+                               MinTime="@TimeSpan.FromHours(8)"
+                               MaxTime="@TimeSpan.FromHours(18)" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTimePicker @bind-Time="filterEndTime"
+                               Label="End Time"
+                               Variant="Variant.Outlined"
+                               MinTime="@TimeSpan.FromHours(8)"
+                               MaxTime="@TimeSpan.FromHours(18)" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Outlined"
+                               Style="color: #666; border-color: #666;"
+                               OnClick="ClearFilters"
+                               StartIcon="@Icons.Material.Filled.Clear">
+                        Clear
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled"
+                               Style="background-color: #00286E; color: white;"
+                               OnClick="ApplyFilters"
+                               StartIcon="@Icons.Material.Filled.Search">
+                        Search Rooms
+                    </MudButton>
+                </MudStack>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Loading State -->
+    @if (loading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+            <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+        </div>
+    }
+    else
+    {
+        <!-- Rooms Grid -->
+        <MudGrid Spacing="3">
+            @foreach (var room in FilteredRooms)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudPaper Elevation="2" Class="pa-3" Style="border-radius: 12px; height: 100%;">
+                        <!-- Room Header -->
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                            <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                                @room.RoomName
+                            </MudText>
+                            <MudChip T="string" Size="Size.Small" Style="@GetRoomStatusStyle(room.RoomStatus)">
+                                @room.RoomStatus
+                            </MudChip>
+                        </MudStack>
+
+                        <!-- Room Details -->
+                        <MudGrid Spacing="1" Class="mb-3">
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Room No:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">@room.RoomNo</MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Capacity:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                    <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Style="margin-right: 4px;" />
+                                    @room.RoomCapacity persons
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Location:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                    <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Style="margin-right: 4px;" />
+                                    @room.Location
+                                </MudText>
+                            </MudItem>
+                        </MudGrid>
+
+                        <!-- Action Button -->
+                        <MudButton Variant="Variant.Filled"
+                                   FullWidth="true"
+                                   Style="background-color: #D4A853; color: white;"
+                                   StartIcon="@Icons.Material.Filled.Book"
+                                   OnClick="@(() => BookRoom(room))"
+                                   Disabled="@(room.RoomStatus != RoomStatus.AVAILABLE)">
+                            Book This Room
+                        </MudButton>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            @if (!FilteredRooms.Any())
+            {
+                <MudItem xs="12">
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                        <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No rooms found</MudText>
+                        <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria</MudText>
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private List<AvailableMeetingRoom> rooms = new();
+    private bool loading = true;
+    private DateTime? filterDate = DateTime.Now;
+    private TimeSpan? filterStartTime = TimeSpan.FromHours(9);
+    private TimeSpan? filterEndTime = TimeSpan.FromHours(17);
+    private string? locationFilter = "";
+
+    private IEnumerable<AvailableMeetingRoom> FilteredRooms
+    {
+        get
+        {
+            var filtered = rooms.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(locationFilter))
+            {
+                filtered = filtered.Where(r => r.Location.Contains(locationFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return filtered.OrderBy(r => r.RoomName);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAvailableRooms();
+    }
+
+    private async Task LoadAvailableRooms()
+    {
+        try
+        {
+            loading = true;
+            StateHasChanged();
+
+            var date = filterDate?.ToString("yyyy-MM-dd");
+            var startTime = filterStartTime?.ToString(@"hh\:mm");
+            var endTime = filterEndTime?.ToString(@"hh\:mm");
+
+            rooms = await RoomBookingService.GetAvailableRoomsAsync(date, startTime, endTime);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load rooms: {ex.Message}", Severity.Error);
+            Console.WriteLine($"❌ Error loading rooms: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        await LoadAvailableRooms();
+    }
+
+    private async Task ClearFilters()
+    {
+        filterDate = DateTime.Now;
+        filterStartTime = TimeSpan.FromHours(9);
+        filterEndTime = TimeSpan.FromHours(17);
+        locationFilter = "";
+        await LoadAvailableRooms();
+    }
+
+    private void BookRoom(AvailableMeetingRoom room)
+    {
+        if (room.RoomStatus != RoomStatus.AVAILABLE)
+        {
+            Snackbar.Add("Room is not available for booking", Severity.Warning);
+            return;
+        }
+
+        // Navigate to booking page with room pre-selected
+        Navigation.NavigateTo($"/room-booking?room={room.RoomNo}");
+    }
+
+    private string GetRoomStatusStyle(string status)
+    {
+        return status switch
+        {
+            RoomStatus.AVAILABLE => "background-color: #4caf50; color: white;",
+            RoomStatus.BOOKED => "background-color: #ff9800; color: white;",
+            RoomStatus.OCCUPIED => "background-color: #f44336; color: white;",
+            RoomStatus.MAINTENANCE => "background-color: #666; color: white;",
+            _ => "background-color: #999; color: white;"
+        };
+    }
+}

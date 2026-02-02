@@ -1,0 +1,320 @@
+﻿@page "/available-vehicles"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject ITransportService TransportService
+@inject ICurrentUserService CurrentUserService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Available Vehicles</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+    <!-- Header Section -->
+    <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+        <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Style="margin-right: 12px; vertical-align: middle;" />
+                    Available Vehicles
+                </MudText>
+                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                    Browse and filter available fleet vehicles
+                </MudText>
+            </MudItem>
+            <MudItem xs="12" md="6" Style="text-align: right;">
+                <MudButton Variant="Variant.Filled"
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           Style="background-color: #D4A853; color: white; font-weight: 600;"
+                           OnClick="@(() => Navigation.NavigateTo("/transport-request"))">
+                    Back to Requests
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Filter Section -->
+    <MudPaper Elevation="2" Class="mb-4 pa-4" Style="border-radius: 12px;">
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="4">
+                <MudDatePicker @bind-Date="filterDate"
+                               Label="Filter by Date"
+                               DateFormat="yyyy-MM-dd"
+                               Variant="Variant.Outlined"
+                               MinDate="@DateTime.Now"
+                               MaxDate="@DateTime.Now.AddMonths(3)" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="string"
+                           @bind-Value="vehicleTypeFilter"
+                           Label="Vehicle Type"
+                           Variant="Variant.Outlined"
+                           Clearable="true">
+                    <MudSelectItem Value="@((string)null)">All Types</MudSelectItem>
+                    <MudSelectItem Value="@("Car")">Car</MudSelectItem>
+                    <MudSelectItem Value="@("SUV")">SUV</MudSelectItem>
+                    <MudSelectItem Value="@("Van")">Van</MudSelectItem>
+                    <MudSelectItem Value="@("Bus")">Bus</MudSelectItem>
+                    <MudSelectItem Value="@("Truck")">Truck</MudSelectItem>
+                    <MudSelectItem Value="@("Pickup")">Pickup</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="string"
+                           @bind-Value="capacityFilter"
+                           Label="Minimum Capacity"
+                           Variant="Variant.Outlined"
+                           Clearable="true">
+                    <MudSelectItem Value="@((string)null)">Any Capacity</MudSelectItem>
+                    <MudSelectItem Value="@("2")">2+ passengers</MudSelectItem>
+                    <MudSelectItem Value="@("5")">5+ passengers</MudSelectItem>
+                    <MudSelectItem Value="@("8")">8+ passengers</MudSelectItem>
+                    <MudSelectItem Value="@("15")">15+ passengers</MudSelectItem>
+                    <MudSelectItem Value="@("30")">30+ passengers</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12">
+                <MudStack Row="true" Spacing="2">
+                    <MudButton Variant="Variant.Outlined"
+                               Style="color: #666; border-color: #666;"
+                               OnClick="ClearFilters"
+                               StartIcon="@Icons.Material.Filled.Clear">
+                        Clear
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled"
+                               Style="background-color: #00286E; color: white;"
+                               OnClick="ApplyFilters"
+                               StartIcon="@Icons.Material.Filled.Search">
+                        Search Vehicles
+                    </MudButton>
+                </MudStack>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Loading State -->
+    @if (loading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+            <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+        </div>
+    }
+    else
+    {
+        <!-- Vehicles Grid -->
+        <MudGrid Spacing="3">
+            @foreach (var vehicle in FilteredVehicles)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudPaper Elevation="2" Class="pa-3" Style="border-radius: 12px; height: 100%;">
+                        <!-- Vehicle Header -->
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                            <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                                @vehicle.Description
+                            </MudText>
+                            <MudChip T="string" Size="Size.Small" Style="@GetVehicleStatusStyle(vehicle.Status)">
+                                @vehicle.Status
+                            </MudChip>
+                        </MudStack>
+
+                        <!-- Vehicle Details -->
+                        <MudGrid Spacing="1" Class="mb-3">
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Registration:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                    @vehicle.RegistrationNo
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Type:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                    @vehicle.VehicleType
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Capacity:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                    <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Style="margin-right: 4px;" />
+                                    @vehicle.Capacity persons
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Colour:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                    @vehicle.Colour
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Year:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                    @vehicle.YearOfMake
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Fuel Type:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                    @vehicle.FuelType
+                                </MudText>
+                            </MudItem>
+                            @if (!string.IsNullOrEmpty(vehicle.CurrentLocation))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Current Location:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Style="margin-right: 4px;" />
+                                        @vehicle.CurrentLocation
+                                    </MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+
+                        <!-- Additional Information -->
+                        <MudExpansionPanel Text="More Details" Icon="@Icons.Material.Filled.Info" Style="margin-bottom: 12px;">
+                            <MudGrid Spacing="1">
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Chassis No:</MudText>
+                                    <MudText Typo="Typo.body2">@vehicle.ChassisNo</MudText>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Engine No:</MudText>
+                                    <MudText Typo="Typo.body2">@vehicle.EngineNo</MudText>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Responsible Employee:</MudText>
+                                    <MudText Typo="Typo.body2">@vehicle.ResponsibleEmployee</MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudExpansionPanel>
+
+                        <!-- Action Button -->
+                        <MudButton Variant="Variant.Filled"
+                                   FullWidth="true"
+                                   Style="background-color: #D4A853; color: white;"
+                                   StartIcon="@Icons.Material.Filled.AddTask"
+                                   OnClick="@(() => SelectVehicle(vehicle))"
+                                   Disabled="@(vehicle.Status != VehicleStatus.AVAILABLE)">
+                            @if (vehicle.Status == VehicleStatus.AVAILABLE)
+                            {
+                                <span>Select Vehicle</span>
+                            }
+                            else
+                            {
+                                <span>Not Available</span>
+                            }
+                        </MudButton>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            @if (!FilteredVehicles.Any())
+            {
+                <MudItem xs="12">
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                        <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No vehicles found</MudText>
+                        <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria</MudText>
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private List<FleetVehicle> vehicles = new();
+    private bool loading = true;
+    private DateTime? filterDate = DateTime.Now;
+    private string? vehicleTypeFilter = "";
+    private string? capacityFilter = "";
+
+    private IEnumerable<FleetVehicle> FilteredVehicles
+    {
+        get
+        {
+            var filtered = vehicles.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(vehicleTypeFilter))
+            {
+                filtered = filtered.Where(v =>
+                    v.VehicleType?.Contains(vehicleTypeFilter, StringComparison.OrdinalIgnoreCase) == true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(capacityFilter) && decimal.TryParse(capacityFilter, out var minCapacity))
+            {
+                filtered = filtered.Where(v => v.Capacity >= minCapacity);
+            }
+
+            // Filter by availability
+            filtered = filtered.Where(v => v.Status == VehicleStatus.AVAILABLE);
+
+            return filtered.OrderBy(v => v.VehicleType).ThenBy(v => v.Description);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAvailableVehicles();
+    }
+
+    private async Task LoadAvailableVehicles()
+    {
+        try
+        {
+            loading = true;
+            StateHasChanged();
+
+            var date = filterDate?.ToString("yyyy-MM-dd");
+            vehicles = await TransportService.GetAvailableVehiclesAsync(date);
+
+            Console.WriteLine($"🔍 Loaded {vehicles.Count} vehicles");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load vehicles: {ex.Message}", Severity.Error);
+            Console.WriteLine($"❌ Error loading vehicles: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        await LoadAvailableVehicles();
+    }
+
+    private async Task ClearFilters()
+    {
+        filterDate = DateTime.Now;
+        vehicleTypeFilter = "";
+        capacityFilter = "";
+        await LoadAvailableVehicles();
+    }
+
+    private void SelectVehicle(FleetVehicle vehicle)
+    {
+        if (vehicle.Status != VehicleStatus.AVAILABLE)
+        {
+            Snackbar.Add("Vehicle is not available for booking", Severity.Warning);
+            return;
+        }
+
+        // Navigate back to transport request page with vehicle pre-selected
+        Navigation.NavigateTo($"/transport-request?vehicle={vehicle.No}");
+    }
+
+    private string GetVehicleStatusStyle(string status)
+    {
+        return status switch
+        {
+            VehicleStatus.AVAILABLE => "background-color: #4caf50; color: white;",
+            VehicleStatus.BOOKED => "background-color: #ff9800; color: white;",
+            VehicleStatus.IN_USE => "background-color: #2196f3; color: white;",
+            VehicleStatus.MAINTENANCE => "background-color: #666; color: white;",
+            VehicleStatus.UNAVAILABLE => "background-color: #f44336; color: white;",
+            _ => "background-color: #999; color: white;"
+        };
+    }
+}

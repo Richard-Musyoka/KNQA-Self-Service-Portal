@@ -1,0 +1,1009 @@
+﻿@page "/room-booking"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IRoomBookingService RoomBookingService
+@inject ICurrentUserService CurrentUserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Room Booking</PageTitle>
+
+<MudLayout>
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="600px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.MeetingRoom)"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                @(isEditMode ? "Edit Booking" : "New Room Booking")
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@formValid">
+                <MudGrid Spacing="3">
+                    @if (isEditMode && editingBooking != null)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingBooking.BookingNo"
+                                          Label="Booking Number"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingBooking.Status"
+                                          Label="Status"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+<!-- Room Selection -->
+<MudItem xs="12">
+    <MudSelect T="AvailableMeetingRoom"
+               @bind-Value="selectedRoom"
+               Label="Select Room *"
+               Variant="Variant.Outlined"
+               ToStringFunc="@(room => room != null ? $"{room.RoomName} ({room.RoomNo}) - Capacity: {room.RoomCapacity}" : "")"
+               SearchFunc="@SearchRooms"
+               Required="true"
+               Clearable="true">
+        <ChildContent>
+            @foreach (var room in availableRooms)
+            {
+                <MudSelectItem Value="@room">
+                    <div style="padding: 8px;">
+                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                            @room.RoomName (@room.RoomNo)
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="color: #666;">
+                            Capacity: @room.RoomCapacity • 
+                            Location: @room.Location • 
+                            Status: 
+                            @if (room.RoomStatus == RoomStatus.AVAILABLE)
+                            {
+                                <span style="color: #4caf50">@room.RoomStatus</span>
+                            }
+                            else
+                            {
+                                <span style="color: #f44336">@room.RoomStatus</span>
+                            }
+                        </MudText>
+                    </div>
+                </MudSelectItem>
+            }
+        </ChildContent>
+    </MudSelect>
+</MudItem>
+
+                    <!-- Booking Details -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.Purpose"
+                                      Label="Purpose/Meeting Title *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Counter="200"
+                                      MaxLength="200" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="selectedDate"
+                                       Label="Booking Date *"
+                                       DateFormat="yyyy-MM-dd"
+                                       Required="true"
+                                       MinDate="@DateTime.Now"
+                                       MaxDate="@DateTime.Now.AddMonths(3)"
+                                       Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.NoOfParticipants"
+                                      Label="Number of Participants *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      InputType="InputType.Number"
+                                      Min="1"
+                                      Max="@(selectedRoom?.RoomCapacity ?? 100)" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTimePicker @bind-Time="startTime"
+                                       Label="Start Time *"
+                                       Required="true"
+                                       Variant="Variant.Outlined"
+                                       MinTime="@TimeSpan.FromHours(8)"
+                                       MaxTime="@TimeSpan.FromHours(18)" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTimePicker @bind-Time="endTime"
+                                       Label="End Time *"
+                                       Required="true"
+                                       Variant="Variant.Outlined"
+                                       MinTime="@TimeSpan.FromHours(8)"
+                                       MaxTime="@TimeSpan.FromHours(18)" />
+                    </MudItem>
+
+                    <!-- Duration Calculation -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-2" Elevation="0" Style="background-color: #f5f5f5; border-radius: 4px;">
+                            <MudGrid Spacing="1">
+                                <MudItem xs="4">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Duration:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@CalculateDuration()</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="8">
+                                    @if (selectedRoom != null && formModel.NoOfParticipants > selectedRoom.RoomCapacity)
+                                    {
+                                        <MudAlert Severity="Severity.Warning" Dense="true">
+                                            Participants exceed room capacity!
+                                        </MudAlert>
+                                    }
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Special Requests -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.SpecialRequest"
+                                      Label="Special Requests"
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      Counter="500"
+                                      MaxLength="500"
+                                      HelperText="Any special equipment or setup requirements" />
+                    </MudItem>
+
+                    <!-- Remarks -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.Remarks"
+                                      Label="Additional Remarks"
+                                      Variant="Variant.Outlined"
+                                      Lines="2"
+                                      Counter="200"
+                                      MaxLength="200" />
+                    </MudItem>
+
+                    <!-- Booking Summary -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-3"
+                                  Elevation="0"
+                                  Style="background-color: #f5f5f5; border-left: 4px solid #D4A853;">
+                            <MudText Typo="Typo.body2" Style="color: #00286E; margin-bottom: 12px;">
+                                <strong>Booking Summary</strong>
+                            </MudText>
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Room:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(selectedRoom?.RoomName ?? "Not selected")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Capacity:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(selectedRoom?.RoomCapacity ?? 0)</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Date:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@selectedDate?.ToString("dd MMM yyyy")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Time:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@startTime?.ToString(@"hh\:mm") - @endTime?.ToString(@"hh\:mm")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Purpose:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@formModel.Purpose</strong>
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => SaveBooking())"
+                           Disabled="@(!formValid || saving || !IsBookingValid())">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Saving...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Book" Size="Size.Small" />
+                        <span class="ms-2">@(isEditMode ? "Update Booking" : "Book Room")</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Style="margin-right: 12px; vertical-align: middle;" />
+                            Room Booking
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(currentEmployeeName))
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                @currentEmployeeName (@currentEmployeeNo)
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudButton Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   Style="background-color: #D4A853; color: white; font-weight: 600;"
+                                   Size="Size.Large"
+                                   OnClick="OpenCreateDrawer">
+                            Book Room
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Error/Success Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => errorMessage = null"
+                          Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => successMessage = null"
+                          Class="mb-4">
+                    @successMessage
+                </MudAlert>
+            }
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </div>
+            }
+            else
+            {
+                <!-- Summary Cards -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Bookings</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.TotalBookings</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Book" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Pending</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.PendingBookings</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.PendingActions" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Approved</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.ApprovedBookings</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Completed</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.CompletedBookings</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.DoneAll" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Available Rooms Quick View -->
+                <MudPaper Elevation="2" Class="mb-4 pa-4" Style="border-radius: 12px; border-left: 4px solid #D4A853;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Style="margin-right: 8px;" />
+                            Available Rooms Today
+                        </MudText>
+                        <MudButton Variant="Variant.Text"
+                                   Style="color: #00286E;"
+                                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                                   OnClick="@(() => Navigation.NavigateTo("/available-rooms"))">
+                            View All
+                        </MudButton>
+                    </MudStack>
+                    
+                    @if (availableRooms.Any())
+                    {
+                        <MudGrid Spacing="3">
+                            @foreach (var room in availableRooms.Take(4))
+                            {
+                                <MudItem xs="12" sm="6" md="3">
+                                    <MudPaper Elevation="1" Class="pa-3" Style="border-radius: 8px; border-left: 4px solid #4caf50;">
+                                        <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                            @room.RoomName
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Style="color: #666;">
+                                            @room.RoomNo • Capacity: @room.RoomCapacity
+                                        </MudText>
+                                        <div class="mt-2">
+                                            <MudChip T="string" Size="Size.Small" Style="background-color: #4caf50; color: white;">
+                                                @room.RoomStatus
+                                            </MudChip>
+                                            <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">
+                                                @room.Location
+                                            </MudChip>
+                                        </div>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Style="color: #666; text-align: center; padding: 20px;">
+                            No available rooms found for today
+                        </MudText>
+                    }
+                </MudPaper>
+
+                <!-- Bookings Table -->
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853; margin-bottom: 20px">
+                    <MudTable Items="@FilteredBookings"
+                              Hover="true"
+                              Breakpoint="Breakpoint.Sm"
+                              Dense="true"
+                              Striped="true"
+                              Style="border-radius: 12px;">
+                        <ToolBarContent>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Book" Style="color: #00286E;" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">My Bookings</MudText>
+                                    <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">@bookings.Count bookings</MudChip>
+                                </MudStack>
+
+                                <MudStack Row="true" Spacing="2">
+                                    <MudTextField @bind-Value="searchTerm"
+                                                  Placeholder="Search bookings..."
+                                                  Adornment="Adornment.Start"
+                                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                                  IconSize="Size.Medium"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  DebounceInterval="300"
+                                                  Style="min-width: 300px;"
+                                                  Class="mt-0">
+                                    </MudTextField>
+
+                                    <MudSelect @bind-Value="statusFilter"
+                                               Placeholder="Status"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Status</MudSelectItem>
+                                        <MudSelectItem Value="@BookingStatus.PENDING">Pending</MudSelectItem>
+                                        <MudSelectItem Value="@BookingStatus.APPROVED">Approved</MudSelectItem>
+                                        <MudSelectItem Value="@BookingStatus.REJECTED">Rejected</MudSelectItem>
+                                        <MudSelectItem Value="@BookingStatus.COMPLETED">Completed</MudSelectItem>
+                                        <MudSelectItem Value="@BookingStatus.CANCELLED">Cancelled</MudSelectItem>
+                                    </MudSelect>
+
+                                    <MudTooltip Text="Clear Filters">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                                       Style="color: #666; border: 1px solid #666;"
+                                                       OnClick="ClearFilters" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Refresh">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                                       Style="color: #00286E; border: 1px solid #00286E;"
+                                                       OnClick="RefreshList" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudStack>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>Booking No.</MudTh>
+                            <MudTh>Room</MudTh>
+                            <MudTh>Purpose</MudTh>
+                            <MudTh>Date & Time</MudTh>
+                            <MudTh>Participants</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Manage</MudTh> <!-- Added this header -->
+                            <MudTh Style="text-align: center;">Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Booking No.">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">@context.BookingNo</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Room">
+                                <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.RoomName</MudText>
+                                <MudText Typo="Typo.caption">@context.RoomNo</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Purpose">
+                                <MudText Typo="Typo.body2" Style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    @context.Purpose
+                                </MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Date & Time">
+                                <MudText Typo="Typo.body2">@FormatDate(context.Date)</MudText>
+                                <MudText Typo="Typo.caption">@context.StartTime - @context.EndTime</MudText>
+                                <MudText Typo="Typo.caption" Style="color: #999;">@context.Duration</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Participants">
+                                <MudText Typo="Typo.body2">@context.NoOfParticipants / @context.RoomCapacity</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                @GetStatusChip(context.Status)
+                            </MudTd>
+                            <MudTd DataLabel="Manage">
+                                <!-- Changed from "Status" to "Manage" -->
+                                <MudTooltip Text="Manage Participants">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Groups"
+                                                   Size="Size.Small"
+                                                   Style="color: #2196f3;"
+                                                   OnClick="() => ManageParticipants(context)" />
+                                </MudTooltip>
+                            </MudTd>
+                            <MudTd DataLabel="Actions" Style="text-align: center;">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Style="color: #00286E;"
+                                                       OnClick="() => ViewDetails(context)" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="@(context.Status == BookingStatus.PENDING ? "Edit Booking" : "Cannot edit - booking is not pending")">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Size="Size.Small"
+                                                       Style="@(context.Status == BookingStatus.PENDING ? "color: #D4A853;" : "color: #ccc;")"
+                                                       OnClick="() => OpenEditDrawer(context)"
+                                                       Disabled="@(context.Status != BookingStatus.PENDING)" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="@(context.Status == BookingStatus.PENDING || context.Status == BookingStatus.APPROVED ? "Cancel Booking" : "Cannot cancel")">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                                                       Size="Size.Small"
+                                                       Style="@(context.Status == BookingStatus.PENDING || context.Status == BookingStatus.APPROVED ? "color: #f44336;" : "color: #ccc;")"
+                                                       OnClick="() => CancelBooking(context)"
+                                                       Disabled="@(!(context.Status == BookingStatus.PENDING || context.Status == BookingStatus.APPROVED))" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div style="text-align: center; padding: 60px 20px;">
+                                <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No bookings found</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria or create a new booking</MudText>
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private List<Models.RoomBooking> bookings = new();
+    private List<Models.AvailableMeetingRoom> availableRooms = new();
+    private Models.RoomBookingSummary summaryData = new();
+    private bool loading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = "";
+    private string? statusFilter = "";
+    private string currentEmployeeNo = "";
+    private string currentEmployeeName = "";
+
+    // Drawer variables
+    private bool drawerOpen = false;
+    private bool isEditMode = false;
+    private bool saving = false;
+    private MudForm form;
+    private bool formValid;
+    private Models.RoomBookingCreate formModel = new();
+    private Models.AvailableMeetingRoom? selectedRoom;
+    private DateTime? selectedDate = DateTime.Now;
+    private TimeSpan? startTime = TimeSpan.FromHours(9);
+    private TimeSpan? endTime = TimeSpan.FromHours(10);
+    
+    // Store the booking being edited
+    private Models.RoomBooking editingBooking = null;
+
+    private IEnumerable<Models.RoomBooking> FilteredBookings
+    {
+        get
+        {
+            var filtered = bookings.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                filtered = filtered.Where(t =>
+                    (t.BookingNo?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (t.RoomName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (t.Purpose?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (t.RoomNo?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                filtered = filtered.Where(t => t.Status == statusFilter);
+            }
+
+            return filtered.OrderByDescending(t => t.Date).ThenByDescending(t => t.StartTime);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("🔍 RoomBooking page initialized");
+
+        try
+        {
+            currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+            currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+
+            Console.WriteLine($"🔍 Current User - Name: {currentEmployeeName}, EmployeeNo: {currentEmployeeNo}");
+
+            if (string.IsNullOrEmpty(currentEmployeeNo))
+            {
+                errorMessage = "Employee number not found. Please log in again.";
+                loading = false;
+                StateHasChanged();
+                return;
+            }
+
+            await LoadAvailableRooms();
+            await LoadBookings();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error in OnInitializedAsync: {ex}");
+            errorMessage = $"Error initializing page: {ex.Message}";
+            loading = false;
+        }
+    }
+
+    private void ManageParticipants(Models.RoomBooking booking)
+    {
+        Navigation.NavigateTo($"/booking/{booking.BookingNo}/participants");
+    }
+
+    private async Task LoadAvailableRooms()
+    {
+        try
+        {
+            var today = DateTime.Now.ToString("yyyy-MM-dd");
+            availableRooms = await RoomBookingService.GetAvailableRoomsAsync(today);
+            Console.WriteLine($"🔍 Loaded {availableRooms.Count} available rooms");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading available rooms: {ex.Message}");
+            availableRooms = new List<AvailableMeetingRoom>();
+        }
+    }
+
+    private async Task LoadBookings()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            Console.WriteLine($"🔍 Loading bookings for employee: {currentEmployeeNo}");
+
+            bookings = await RoomBookingService.GetBookingsByEmployeeAsync(currentEmployeeNo);
+            summaryData = await RoomBookingService.GetBookingSummaryAsync(currentEmployeeNo);
+
+            Console.WriteLine($"🔍 Loaded {bookings.Count} bookings");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load bookings: {ex.Message}";
+            Console.WriteLine($"❌ Error loading bookings: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<IEnumerable<AvailableMeetingRoom>> SearchRooms(string value)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return availableRooms;
+
+            return availableRooms.Where(r =>
+                r.RoomName.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                r.RoomNo.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                r.Location.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return availableRooms;
+        }
+    }
+
+    private void OpenCreateDrawer()
+    {
+        isEditMode = false;
+        editingBooking = null;
+        formModel = new RoomBookingCreate
+        {
+            EmployeeNo = currentEmployeeNo,
+            EmployeeName = currentEmployeeName,
+            NoOfParticipants = 1,
+            Date = DateTime.Now.ToString("yyyy-MM-dd")
+        };
+        selectedRoom = null;
+        selectedDate = DateTime.Now;
+        startTime = TimeSpan.FromHours(9);
+        endTime = TimeSpan.FromHours(10);
+
+        formValid = false;
+        drawerOpen = true;
+        StateHasChanged();
+    }
+
+    private async void OpenEditDrawer(Models.RoomBooking booking)
+    {
+        if (booking.Status != BookingStatus.PENDING)
+        {
+            Snackbar.Add("Cannot edit booking that is not in Pending status", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            // Fetch the latest version with all fields
+            var currentBooking = await RoomBookingService.GetBookingAsync(booking.BookingNo);
+
+            if (currentBooking == null)
+            {
+                Snackbar.Add("Could not load booking details", Severity.Error);
+                return;
+            }
+
+            isEditMode = true;
+            editingBooking = currentBooking;
+
+            // Find the room
+            selectedRoom = availableRooms.FirstOrDefault(r => r.RoomNo == currentBooking.RoomNo);
+
+            // Parse date and time
+            if (DateTime.TryParse(currentBooking.Date, out var date))
+                selectedDate = date;
+
+            if (TimeSpan.TryParse(currentBooking.StartTime, out var start))
+                startTime = start;
+
+            if (TimeSpan.TryParse(currentBooking.EndTime, out var end))
+                endTime = end;
+
+            formModel = new RoomBookingCreate
+            {
+                EmployeeNo = currentBooking.EmployeeNo,
+                EmployeeName = currentBooking.EmployeeName,
+                RoomNo = currentBooking.RoomNo,
+                RoomName = currentBooking.RoomName,
+                RoomCapacity = currentBooking.RoomCapacity,
+                NoOfParticipants = currentBooking.NoOfParticipants,
+                Date = currentBooking.Date,
+                Purpose = currentBooking.Purpose,
+                Remarks = currentBooking.Remarks,
+                SpecialRequest = currentBooking.SpecialRequest,
+                Duration = currentBooking.Duration
+            };
+
+            drawerOpen = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading booking for edit: {ex.Message}");
+            Snackbar.Add("Failed to load booking for editing", Severity.Error);
+        }
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+        formModel = new Models.RoomBookingCreate();
+        editingBooking = null;
+        selectedRoom = null;
+    }
+
+    private bool IsBookingValid()
+    {
+        if (selectedRoom == null) return false;
+        if (selectedDate == null) return false;
+        if (startTime == null || endTime == null) return false;
+        if (endTime <= startTime) return false;
+        if (formModel.NoOfParticipants > selectedRoom.RoomCapacity) return false;
+        if (string.IsNullOrWhiteSpace(formModel.Purpose)) return false;
+        if (selectedDate < DateTime.Now.Date) return false;
+        if (selectedDate == DateTime.Now.Date && startTime < DateTime.Now.TimeOfDay) return false;
+
+        return true;
+    }
+
+    private string CalculateDuration()
+    {
+        if (startTime == null || endTime == null || endTime <= startTime)
+            return "Invalid time range";
+
+        var duration = endTime.Value - startTime.Value;
+        
+        if (duration.TotalHours >= 1)
+        {
+            var hours = (int)duration.TotalHours;
+            var minutes = duration.Minutes;
+            if (minutes > 0)
+                return $"{hours} hour{(hours > 1 ? "s" : "")} {minutes} minute{(minutes > 1 ? "s" : "")}";
+            return $"{hours} hour{(hours > 1 ? "s" : "")}";
+        }
+        
+        return $"{duration.TotalMinutes} minute{(duration.TotalMinutes > 1 ? "s" : "")}";
+    }
+
+    private async Task SaveBooking()
+    {
+        try
+        {
+            await form.Validate();
+
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            if (!IsBookingValid())
+            {
+                Snackbar.Add("Please check your booking details", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            // Check room availability
+            if (!isEditMode)
+            {
+                var isAvailable = await RoomBookingService.CheckRoomAvailabilityAsync(
+                    selectedRoom.RoomNo,
+                    selectedDate.Value.ToString("yyyy-MM-dd"),
+                    startTime.Value.ToString(@"hh\:mm"),
+                    endTime.Value.ToString(@"hh\:mm"));
+
+                if (!isAvailable)
+                {
+                    Snackbar.Add("Room is not available for the selected time slot", Severity.Error);
+                    saving = false;
+                    return;
+                }
+            }
+
+            // Prepare the booking
+            formModel.RoomNo = selectedRoom.RoomNo;
+            formModel.RoomName = selectedRoom.RoomName;
+            formModel.RoomCapacity = selectedRoom.RoomCapacity;
+            formModel.Date = selectedDate.Value.ToString("yyyy-MM-dd");
+            formModel.StartTime = startTime.Value.ToString(@"hh\:mm");
+            formModel.EndTime = endTime.Value.ToString(@"hh\:mm");
+            formModel.Duration = CalculateDuration();
+            formModel.EmployeeNo = currentEmployeeNo;
+            formModel.EmployeeName = currentEmployeeName;
+
+            Console.WriteLine($"📤 {(isEditMode ? "Updating" : "Creating")} booking:");
+            Console.WriteLine($"   Room: {formModel.RoomName} ({formModel.RoomNo})");
+            Console.WriteLine($"   Date: {formModel.Date}");
+            Console.WriteLine($"   Time: {formModel.StartTime} - {formModel.EndTime}");
+            Console.WriteLine($"   Purpose: {formModel.Purpose}");
+
+            string result;
+            if (isEditMode && editingBooking != null)
+            {
+                // Update the existing booking with new values
+                editingBooking.RoomNo = formModel.RoomNo;
+                editingBooking.RoomName = formModel.RoomName;
+                editingBooking.RoomCapacity = formModel.RoomCapacity;
+                editingBooking.NoOfParticipants = formModel.NoOfParticipants;
+                editingBooking.Date = formModel.Date;
+                editingBooking.StartTime = formModel.StartTime;
+                editingBooking.EndTime = formModel.EndTime;
+                editingBooking.Duration = formModel.Duration;
+                editingBooking.Purpose = formModel.Purpose;
+                editingBooking.Remarks = formModel.Remarks;
+                editingBooking.SpecialRequest = formModel.SpecialRequest;
+
+                Console.WriteLine($"🔄 Updating booking {editingBooking.BookingNo} with ETag: {editingBooking.ODataEtag}");
+
+                result = await RoomBookingService.UpdateBookingAsync(editingBooking);
+            }
+            else
+            {
+                // For create mode, call the Create method
+                result = await RoomBookingService.CreateBookingAsync(formModel);
+            }
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add(isEditMode ? "Booking updated successfully!" : "Booking created successfully!", Severity.Success);
+                successMessage = result;
+                CloseDrawer();
+                await LoadAvailableRooms();
+                await LoadBookings();
+            }
+            else
+            {
+                Snackbar.Add(result, Severity.Error, config => { config.VisibleStateDuration = 8000; });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in SaveBooking: {ex}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CancelBooking(Models.RoomBooking booking)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Cancel Booking",
+            $"Are you sure you want to cancel booking '{booking.BookingNo}'?",
+            yesText: "Cancel Booking",
+            cancelText: "Keep Booking",
+            options: new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                CloseButton = true
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var result = await RoomBookingService.CancelBookingAsync(booking.BookingNo, "Cancelled by user");
+
+                if (result.StartsWith("Success"))
+                {
+                    Snackbar.Add($"Booking {booking.BookingNo} cancelled successfully", Severity.Success);
+                    await LoadAvailableRooms();
+                    await LoadBookings();
+                }
+                else
+                {
+                    Snackbar.Add(result, Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to cancel: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task RefreshList()
+    {
+        await LoadAvailableRooms();
+        await LoadBookings();
+        Snackbar.Add("List refreshed successfully", Severity.Success);
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        statusFilter = "";
+    }
+
+    private void ViewDetails(Models.RoomBooking booking)
+    {
+        var parameters = new DialogParameters { ["Booking"] = booking };
+        DialogService.Show<RoomBookingDetails>("Booking Details", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+    }
+
+    private string FormatDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString))
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "Pending") switch
+        {
+            "Pending Approval" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.PendingActions),
+            "Approved" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Rejected" => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel),
+            "Completed" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.DoneAll),
+            "Cancelled" => ("background-color: #666; color: white;", Icons.Material.Filled.DoNotDisturb),
+            "In Progress" => ("background-color: #D4A853; color: white;", Icons.Material.Filled.AccessTime),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

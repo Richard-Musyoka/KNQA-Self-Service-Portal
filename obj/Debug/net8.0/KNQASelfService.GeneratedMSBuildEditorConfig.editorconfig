@@ -43,10 +43,6 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSW5kZXgucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/LeaveApplicationDetails.razor]
-build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTGVhdmVBcHBsaWNhdGlvbkRldGFpbHMucmF6b3I=
-build_metadata.AdditionalFiles.CssScope = 
-
 [C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/MyProfile.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTXlQcm9maWxlLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
@@ -59,8 +55,92 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0F1dGhcUmVkaXJlY3RUb0xvZ2luLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Help_Desk/HelpDesk.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0hlbHBfRGVza1xIZWxwRGVzay5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Help_Desk/HelpDeskTicketDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0hlbHBfRGVza1xIZWxwRGVza1RpY2tldERldGFpbHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Incident_Management/IncidentDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0luY2lkZW50X01hbmFnZW1lbnRcSW5jaWRlbnREZXRhaWxzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Incident_Management/IncidentManagement.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0luY2lkZW50X01hbmFnZW1lbnRcSW5jaWRlbnRNYW5hZ2VtZW50LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Job_Requisition/JobRequisitionDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0pvYl9SZXF1aXNpdGlvblxKb2JSZXF1aXNpdGlvbkRldGFpbHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Job_Requisition/JobRequisitionManagement.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0pvYl9SZXF1aXNpdGlvblxKb2JSZXF1aXNpdGlvbk1hbmFnZW1lbnQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Leave_Management/LeaveApplicationDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0xlYXZlX01hbmFnZW1lbnRcTGVhdmVBcHBsaWNhdGlvbkRldGFpbHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Leave_Management/Leave_Application.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0xlYXZlX01hbmFnZW1lbnRcTGVhdmVfQXBwbGljYXRpb24ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Leave_Planning/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0xlYXZlX1BsYW5uaW5nXEluZGV4LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Leave_Planning/LeavePlanDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0xlYXZlX1BsYW5uaW5nXExlYXZlUGxhbkRldGFpbHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Leave_Planning/LeavePlanFormDialog.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0xlYXZlX1BsYW5uaW5nXExlYXZlUGxhbkZvcm1EaWFsb2cucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Meeting_Rooms/AvailableRooms.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX01lZXRpbmdfUm9vbXNcQXZhaWxhYmxlUm9vbXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Meeting_Rooms/MeetingParticipants.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX01lZXRpbmdfUm9vbXNcTWVldGluZ1BhcnRpY2lwYW50cy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Meeting_Rooms/RoomBooking.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX01lZXRpbmdfUm9vbXNcUm9vbUJvb2tpbmcucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Meeting_Rooms/RoomBookingDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX01lZXRpbmdfUm9vbXNcUm9vbUJvb2tpbmdEZXRhaWxzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Training_Evaluation/TrainingEvaluationDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1RyYWluaW5nX0V2YWx1YXRpb25cVHJhaW5pbmdFdmFsdWF0aW9uRGV0YWlscy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Training_Evaluation/TrainingEvaluationManagement.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1RyYWluaW5nX0V2YWx1YXRpb25cVHJhaW5pbmdFdmFsdWF0aW9uTWFuYWdlbWVudC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Training_Request/TrainingRequestDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1RyYWluaW5nX1JlcXVlc3RcVHJhaW5pbmdSZXF1ZXN0RGV0YWlscy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Transport_Request/AvailableVehicles.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1RyYW5zcG9ydF9SZXF1ZXN0XEF2YWlsYWJsZVZlaGljbGVzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Transport_Request/TransportRequest.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1RyYW5zcG9ydF9SZXF1ZXN0XFRyYW5zcG9ydFJlcXVlc3QucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Transport_Request/TransportRequestDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1RyYW5zcG9ydF9SZXF1ZXN0XFRyYW5zcG9ydFJlcXVlc3REZXRhaWxzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Transport_Request/TravellingEmployees.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1RyYW5zcG9ydF9SZXF1ZXN0XFRyYXZlbGxpbmdFbXBsb3llZXMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_User_Management/AddUser.razor]
@@ -77,6 +157,18 @@ build_metadata.AdditionalFiles.CssScope =
 
 [C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_User_Management/ViewUser.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1VzZXJfTWFuYWdlbWVudFxWaWV3VXNlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Vehicle_Maintainance/CompleteMaintenanceDialog.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1ZlaGljbGVfTWFpbnRhaW5hbmNlXENvbXBsZXRlTWFpbnRlbmFuY2VEaWFsb2cucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Vehicle_Maintainance/MaintenanceDetailsDialog.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1ZlaGljbGVfTWFpbnRhaW5hbmNlXE1haW50ZW5hbmNlRGV0YWlsc0RpYWxvZy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Pages/_Vehicle_Maintainance/VehicleMaintenance.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1ZlaGljbGVfTWFpbnRhaW5hbmNlXFZlaGljbGVNYWludGVuYW5jZS5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/Attain/source/repos/KNQASelfService/KNQASelfService/Shared/LoginLayout.razor]

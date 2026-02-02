@@ -1,0 +1,141 @@
+﻿@* Components/CompleteMaintenanceDialog.razor *@
+@using KNQASelfService.Models
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Style="color: #4caf50; margin-right: 8px;" />
+                    Complete Maintenance
+                </MudText>
+                <MudText Typo="Typo.body2" Style="color: #666; margin-bottom: 20px;">
+                    Complete maintenance record for @Maintenance.VehicleRegistrationNo
+                </MudText>
+            </MudItem>
+
+            <!-- Post-Service Mileage -->
+            <MudItem xs="12">
+                <MudTextField @bind-Value="postServiceMileage"
+                              Label="Post-Service Mileage (km) *"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              InputType="InputType.Number"
+                              Min="@Maintenance.PreServiceMileage"
+                              HelperText="Must be greater than or equal to pre-service mileage" />
+            </MudItem>
+
+            <!-- Service Completion Details -->
+            <MudItem xs="12">
+                <MudTextField @bind-Value="completionNotes"
+                              Label="Completion Notes"
+                              Variant="Variant.Outlined"
+                              Lines="3"
+                              Counter="500"
+                              MaxLength="500"
+                              HelperText="Add any additional notes about the completed service" />
+            </MudItem>
+
+            <!-- Summary -->
+            <MudItem xs="12">
+                <MudPaper Class="pa-3" Elevation="0" Style="background-color: #f5f5f5; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        Service Summary
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Vehicle:</MudText>
+                            <MudText Typo="Typo.body2">@Maintenance.VehicleRegistrationNo</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Service Type:</MudText>
+                            <MudText Typo="Typo.body2">@Maintenance.MaintenanceType</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Pre-Service Mileage:</MudText>
+                            <MudText Typo="Typo.body2">@Maintenance.PreServiceMileage.ToString("N0") km</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Post-Service Mileage:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #4caf50; font-weight: 600;">
+                                @(postServiceMileage > 0 ? postServiceMileage.ToString("N0") + " km" : "Not set")
+                            </MudText>
+                        </MudItem>
+                        @if (postServiceMileage > Maintenance.PreServiceMileage)
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Distance During Service:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                    @((postServiceMileage - Maintenance.PreServiceMileage).ToString("N0")) km
+                                </MudText>
+                            </MudItem>
+                        }
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Total Cost:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                KES @Maintenance.TotalCost.ToString("N2")
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Cancel" Style="color: #666;">
+            Cancel
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Style="background-color: #4caf50; color: white;"
+                   OnClick="Complete"
+                   Disabled="@(postServiceMileage <= 0 || postServiceMileage < Maintenance.PreServiceMileage)">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" />
+            <span class="ms-2">Complete Maintenance</span>
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter] public Models.VehicleMaintenance Maintenance { get; set; } = new();
+
+    private decimal postServiceMileage = 0;
+    private string completionNotes = "";
+
+    private void Cancel()
+    {
+        
+    }
+
+    private async Task Complete()
+    {
+        if (postServiceMileage <= 0 || postServiceMileage < Maintenance.PreServiceMileage)
+        {
+            return;
+        }
+
+        try
+        {
+            // Update the maintenance record
+            Maintenance.PostServiceMileage = postServiceMileage;
+            Maintenance.MileageDifference = postServiceMileage - Maintenance.PreServiceMileage;
+            Maintenance.Status = MaintenanceStatus.COMPLETED;
+
+            if (!string.IsNullOrEmpty(completionNotes))
+            {
+                Maintenance.Remarks = string.IsNullOrEmpty(Maintenance.Remarks)
+                    ? $"Completed: {completionNotes}"
+                    : $"{Maintenance.Remarks}\n\nCompleted: {completionNotes}";
+            }
+
+            
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error completing maintenance: {ex.Message}");
+        }
+    }
+}

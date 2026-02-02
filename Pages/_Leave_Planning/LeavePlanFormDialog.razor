@@ -1,0 +1,232 @@
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@* REMOVE @using MudBlazor.Dialog - not needed for view-only pattern *@
+@inject ILeavePlanService LeavePlanService
+@inject ISnackbar Snackbar
+
+<MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true">
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@formValid">
+            <MudGrid Spacing="3">
+                @if (isEditMode && currentPlan != null)
+                {
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="currentPlan.ApplicationNo"
+                                      Label="Plan Number"
+                                      ReadOnly="true"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="currentPlan.EmployeeName"
+                                      Label="Employee Name"
+                                      ReadOnly="true"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="currentPlan.DepartmentCode"
+                                      Label="Department"
+                                      ReadOnly="true"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                }
+
+                <!-- Leave Type Selection -->
+                <MudItem xs="12">
+                    <MudSelect T="string"
+                               @bind-Value="formModel.LeaveCode"
+                               Label="Leave Type *"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               Validation="@(new Func<string, IEnumerable<string>>(ValidateLeaveCode))">
+                        <MudSelectItem Value="@("ANNUAL")">Annual Leave</MudSelectItem>
+                        <MudSelectItem Value="@("SICK")">Sick Leave</MudSelectItem>
+                        <MudSelectItem Value="@("MATERNITY")">Maternity Leave</MudSelectItem>
+                        <MudSelectItem Value="@("PATERNITY")">Paternity Leave</MudSelectItem>
+                        <MudSelectItem Value="@("COMPASSIONATE")">Compassionate Leave</MudSelectItem>
+                        <MudSelectItem Value="@("STUDY")">Study Leave</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <!-- Fiscal Start Date -->
+                <MudItem xs="12" md="6">
+                    <MudDatePicker @bind-Date="fiscalStartDate"
+                                   Label="Fiscal Start Date *"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   Validation="@(new Func<DateTime?, IEnumerable<string>>(ValidateFiscalStartDate))" />
+                </MudItem>
+
+                <!-- Maturity Date -->
+                <MudItem xs="12" md="6">
+                    <MudDatePicker @bind-Date="maturityDate"
+                                   Label="Maturity Date *"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   Validation="@(new Func<DateTime?, IEnumerable<string>>(ValidateMaturityDate))" />
+                </MudItem>
+
+                <!-- Leave Entitlement -->
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="formModel.LeaveEntitlement"
+                                  Label="Leave Entitlement (Days) *"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  Min="1"
+                                  Required="true"
+                                  Validation="@(new Func<int, IEnumerable<string>>(ValidateEntitlement))" />
+                </MudItem>
+
+                <!-- Days in Plan -->
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="formModel.DaysInPlan"
+                                  Label="Days in Plan *"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  Min="1"
+                                  Required="true"
+                                  Validation="@(new Func<int, IEnumerable<string>>(ValidateDaysInPlan))" />
+                </MudItem>
+
+                @if (isEditMode && currentPlan != null)
+                {
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="currentPlan.LeaveBalance"
+                                      Label="Current Balance"
+                                      ReadOnly="true"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="currentPlan.Status"
+                                      Label="Status"
+                                      ReadOnly="true"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                }
+
+                <!-- Plan Summary -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-3"
+                              Elevation="0"
+                              Style="background-color: #f5f5f5; border-left: 4px solid #D4A853;">
+                        <MudText Typo="Typo.body2" Style="color: #00286E; margin-bottom: 12px;">
+                            <strong>Plan Summary</strong>
+                        </MudText>
+                        <MudGrid Spacing="1">
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Leave Type:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                    <strong>@(string.IsNullOrEmpty(formModel.LeaveCode) ? "Not selected" : formModel.LeaveCode)</strong>
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Entitlement:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                    <strong>@(formModel.LeaveEntitlement > 0 ? $"{formModel.LeaveEntitlement} days" : "Not set")</strong>
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Days in Plan:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                    <strong>@(formModel.DaysInPlan > 0 ? $"{formModel.DaysInPlan} days" : "Not set")</strong>
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Period:</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                    <strong>@(fiscalStartDate != null && maturityDate != null ? $"{fiscalStartDate?.ToString("MMM yyyy")} - {maturityDate?.ToString("MMM yyyy")}" : "Not selected")</strong>
+                                </MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public LeavePlan? LeavePlan { get; set; }
+
+    private MudForm? form;
+    private bool formValid;
+    private bool saving = false;
+    private bool isEditMode = false;
+    private LeavePlan? currentPlan;
+    private LeavePlanCreate formModel = new();
+    private DateTime? fiscalStartDate;
+    private DateTime? maturityDate;
+
+    protected override void OnInitialized()
+    {
+        if (LeavePlan != null)
+        {
+            isEditMode = true;
+            currentPlan = LeavePlan;
+            formModel = new LeavePlanCreate
+            {
+                EmployeeNo = LeavePlan.EmployeeNo,
+                LeaveCode = LeavePlan.LeaveCode,
+                DaysInPlan = LeavePlan.DaysInPlan,
+                LeaveEntitlement = LeavePlan.LeaveEntitlement,
+                FiscalStartDate = LeavePlan.FiscalStartDate,
+                MaturityDate = LeavePlan.MaturityDate
+            };
+
+            if (DateTime.TryParse(LeavePlan.FiscalStartDate, out var fiscal))
+                fiscalStartDate = fiscal;
+
+            if (DateTime.TryParse(LeavePlan.MaturityDate, out var maturity))
+                maturityDate = maturity;
+        }
+        else
+        {
+            isEditMode = false;
+            currentPlan = null;
+            formModel = new LeavePlanCreate { LeaveCode = "ANNUAL" };
+        }
+    }
+
+    // IMPORTANT: Since this is now a view-only pattern dialog,
+    // we need to handle the save differently.
+    // The Save button is now part of the dialog that opens this form,
+    // not inside this component.
+
+    // Validation methods
+    private IEnumerable<string> ValidateLeaveCode(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            yield return "Leave type is required";
+    }
+
+    private IEnumerable<string> ValidateFiscalStartDate(DateTime? value)
+    {
+        if (!value.HasValue)
+            yield return "Fiscal start date is required";
+    }
+
+    private IEnumerable<string> ValidateMaturityDate(DateTime? value)
+    {
+        if (!value.HasValue)
+            yield return "Maturity date is required";
+        else if (fiscalStartDate.HasValue && value <= fiscalStartDate)
+            yield return "Maturity date must be after fiscal start date";
+    }
+
+    private IEnumerable<string> ValidateEntitlement(int value)
+    {
+        if (value <= 0)
+            yield return "Leave entitlement must be greater than 0";
+    }
+
+    private IEnumerable<string> ValidateDaysInPlan(int value)
+    {
+        if (value <= 0)
+            yield return "Days in plan must be greater than 0";
+    }
+}

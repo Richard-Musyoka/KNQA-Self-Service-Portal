@@ -1,0 +1,214 @@
+﻿@using KNQASelfService.Models
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <!-- Header -->
+            <MudItem xs="12">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                    <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                        <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Style="margin-right: 8px;" />
+                        Booking Details
+                    </MudText>
+                    @GetStatusChip(Booking.Status)
+                </MudStack>
+            </MudItem>
+
+            <!-- Booking Information -->
+            <MudItem xs="12">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="background-color: #f5f5f5; border-radius: 8px;">
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Booking Number:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                @Booking.BookingNo
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Room:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                @Booking.RoomName (@Booking.RoomNo)
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Room Details -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Style="margin-right: 8px;" />
+                        Room Information
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Capacity:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">@Booking.RoomCapacity</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Participants:</MudText>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Participants:</MudText>
+                                @if (Booking.NoOfParticipants > Booking.RoomCapacity)
+                                {
+                                    <MudText Typo="Typo.body2" Style="color: #f44336;">
+                                        @Booking.NoOfParticipants
+                                    </MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        @Booking.NoOfParticipants
+                                    </MudText>
+                                }
+                            </MudItem>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Booking Time -->
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" Style="margin-right: 8px;" />
+                        Time Information
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Date:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                @FormatDate(Booking.Date)
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Time Slot:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                @Booking.StartTime - @Booking.EndTime
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Duration:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                @Booking.Duration
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Purpose & Description -->
+            <MudItem xs="12">
+                <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Style="margin-right: 8px;" />
+                        Purpose
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="color: #333;">@Booking.Purpose</MudText>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Special Requests & Remarks -->
+            @if (!string.IsNullOrWhiteSpace(Booking.SpecialRequest))
+            {
+                <MudItem xs="12" md="6">
+                    <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px; border-left: 4px solid #D4A853;">
+                        <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Style="margin-right: 8px;" />
+                            Special Requests
+                        </MudText>
+                        <MudText Typo="Typo.body2" Style="color: #333;">@Booking.SpecialRequest</MudText>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Booking.Remarks))
+            {
+                @if (string.IsNullOrWhiteSpace(Booking.SpecialRequest))
+                {
+                    <MudItem xs="12" md="12">
+                        <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px; border-left: 4px solid #00286E;">
+                            <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Comment" Size="Size.Small" Style="margin-right: 8px;" />
+                                Remarks
+                            </MudText>
+                            <MudText Typo="Typo.body2" Style="color: #333;">@Booking.Remarks</MudText>
+                        </MudPaper>
+                    </MudItem>
+                }
+                else
+                {
+                    <MudItem xs="12" md="6">
+                        <MudPaper Elevation="0" Class="pa-3 mb-3" Style="border: 1px solid #e0e0e0; border-radius: 8px; border-left: 4px solid #00286E;">
+                            <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600; margin-bottom: 12px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Comment" Size="Size.Small" Style="margin-right: 8px;" />
+                                Remarks
+                            </MudText>
+                            <MudText Typo="Typo.body2" Style="color: #333;">@Booking.Remarks</MudText>
+                        </MudPaper>
+                    </MudItem>
+                }
+            }
+
+            <!-- Employee Information -->
+            <MudItem xs="12">
+                <MudPaper Elevation="0" Class="pa-3" Style="background-color: #00286E; border-radius: 8px;">
+                    <MudText Typo="Typo.body2" Style="color: white; font-weight: 600; margin-bottom: 8px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="margin-right: 8px;" />
+                        Booked By
+                    </MudText>
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.8);">Employee:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: white;">@Booking.EmployeeName</MudText>
+                        </MudItem>
+                        <MudItem xs="6">
+                            <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.8);">Employee No:</MudText>
+                            <MudText Typo="Typo.body2" Style="color: white;">@Booking.EmployeeNo</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+  
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter]
+    public Models.RoomBooking Booking { get; set; } = new();
+
+    private string FormatDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString))
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "Pending") switch
+        {
+            "Pending Approval" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.PendingActions),
+            "Approved" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Rejected" => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel),
+            "Completed" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.DoneAll),
+            "Cancelled" => ("background-color: #666; color: white;", Icons.Material.Filled.DoNotDisturb),
+            "In Progress" => ("background-color: #D4A853; color: white;", Icons.Material.Filled.AccessTime),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

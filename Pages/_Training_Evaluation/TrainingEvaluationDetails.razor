@@ -1,0 +1,476 @@
+﻿@* TrainingEvaluationDetails.razor *@
+@using KNQASelfService.Models
+@using MudBlazor
+
+
+<MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true">
+    <DialogContent>
+        @if (TrainingEvaluation != null)
+        {
+            <MudGrid Spacing="2">
+                <!-- Header Section -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 8px;">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                <MudIcon Icon="@Icons.Material.Filled.Assessment"
+                                         Size="Size.Large"
+                                         Style="color:#D4A853;" />
+                                <div>
+                                    <MudText Typo="Typo.h5" Style="color:white;font-weight:600;">
+                                        Training Evaluation Details
+                                    </MudText>
+                                    <MudText Typo="Typo.body2" Style="color:rgba(255,255,255,0.8);">
+                                        Evaluation #@TrainingEvaluation.EvaluationNo
+                                    </MudText>
+                                </div>
+                            </MudStack>
+
+                            <MudChip T="string"
+                                     Color="@GetStatusColor(TrainingEvaluation.Status)"
+                                     Size="Size.Small"
+                                     Style="font-weight:600;color:white;">
+                                @TrainingEvaluation.Status
+                            </MudChip>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Training Information -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #00286E;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.School" Class="mr-2" />
+                            Training Information
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Course Title</MudText>
+                                <MudText Typo="Typo.h6" Style="color:#00286E;">
+                                    @TrainingEvaluation.CourseTitle
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Training Code</MudText>
+                                <MudText>@TrainingEvaluation.TrainingCode</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">No. of Days</MudText>
+                                <MudText>@TrainingEvaluation.NoOfDays days</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Planned Start Date</MudText>
+                                <MudText>@ParseDate(TrainingEvaluation.PlannedStartDate)</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Planned End Date</MudText>
+                                <MudText>@ParseDate(TrainingEvaluation.PlannedEndDate)</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Venue</MudText>
+                                <MudText>@(string.IsNullOrEmpty(TrainingEvaluation.Venue) ? "Not specified" : TrainingEvaluation.Venue)</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Description</MudText>
+                                <MudText>@(string.IsNullOrEmpty(TrainingEvaluation.Description) ? "No description" : TrainingEvaluation.Description)</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Employee Information -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #D4A853;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-2" />
+                            Employee Information
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Employee No.</MudText>
+                                <MudText>@TrainingEvaluation.EmployeeNo</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Employee Name</MudText>
+                                <MudText>@TrainingEvaluation.EmployeeName</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Department</MudText>
+                                <MudText>@TrainingEvaluation.DepartmentCode</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Designation</MudText>
+                                <MudText>@TrainingEvaluation.Designation</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Evaluation Date</MudText>
+                                <MudText>@ParseDate(TrainingEvaluation.EvaluationDate)</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">No. of Approvals</MudText>
+                                <MudText>@TrainingEvaluation.NoOfApprovals</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Overall Rating -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #4caf50;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Star" Class="mr-2" />
+                            Overall Rating
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Overall Satisfaction</MudText>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <MudIcon Icon="@(i <= TrainingEvaluation.OverallRating ? Icons.Material.Filled.Star : Icons.Material.Filled.StarBorder)"
+                                                 Style="color: #D4A853; font-size: 24px;" />
+                                    }
+                                    <MudText Typo="Typo.body1" Style="color:#00286E; margin-left: 8px;">
+                                        @TrainingEvaluation.OverallRating/5
+                                    </MudText>
+                                </div>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Skill Improvement</MudText>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <MudIcon Icon="@(i <= TrainingEvaluation.SkillImprovementRating ? Icons.Material.Filled.Star : Icons.Material.Filled.StarBorder)"
+                                                 Style="color: #2196f3; font-size: 24px;" />
+                                    }
+                                    <MudText Typo="Typo.body1" Style="color:#00286E; margin-left: 8px;">
+                                        @TrainingEvaluation.SkillImprovementRating/5
+                                    </MudText>
+                                </div>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Met Objectives?</MudText>
+                                <MudChip T="string" Color="@(TrainingEvaluation.MetObjectives? Color.Success: Color.Error)">
+                                    @(TrainingEvaluation.MetObjectives ? "Yes" : "No")
+                                </MudChip>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Would Recommend?</MudText>
+                                <MudChip T="string" Color="@(TrainingEvaluation.WouldRecommend? Color.Success: Color.Error)">
+                                    @(TrainingEvaluation.WouldRecommend ? "Yes" : "No")
+                                </MudChip>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Detailed Ratings -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #ff9800;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Grading" Class="mr-2" />
+                            Detailed Ratings
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Trainer Effectiveness</MudText>
+                                <MudChip T="string" Style="background:#D4A853;color:white;">
+                                    @TrainingEvaluation.TrainerEffectiveness
+                                </MudChip>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Content Relevance</MudText>
+                                <MudChip T="string" Style="background:#2196f3;color:white;">
+                                    @TrainingEvaluation.ContentRelevance
+                                </MudChip>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Training Materials</MudText>
+                                <MudChip T="string" Style="background:#4caf50;color:white;">
+                                    @TrainingEvaluation.TrainingMaterials
+                                </MudChip>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Training Facilities</MudText>
+                                <MudChip T="string" Style="background:#9c27b0;color:white;">
+                                    @TrainingEvaluation.TrainingFacilities
+                                </MudChip>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Training Duration</MudText>
+                                <MudChip T="string" Style="background:#ff9800;color:white;">
+                                    @TrainingEvaluation.TrainingDuration
+                                </MudChip>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Applicable to Work</MudText>
+                                <MudChip T="string" Color="@GetApplicabilityColor(TrainingEvaluation.ApplicableToWork)">
+                                    @TrainingEvaluation.ApplicableToWork
+                                </MudChip>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Comments & Feedback -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #9c27b0;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Comment" Class="mr-2" />
+                            Comments & Feedback
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">What You Liked Most</MudText>
+                                <MudText Typo="Typo.body2" Style="color:#666;">
+                                    @TrainingEvaluation.WhatLikedMost
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">What Could Be Improved</MudText>
+                                <MudText Typo="Typo.body2" Style="color:#666;">
+                                    @TrainingEvaluation.WhatCouldImprove
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Additional Comments</MudText>
+                                <MudText Typo="Typo.body2" Style="color:#666;">
+                                    @(string.IsNullOrEmpty(TrainingEvaluation.AdditionalComments) ? "No additional comments" : TrainingEvaluation.AdditionalComments)
+                                </MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Skills Assessment -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #2196f3;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Class="mr-2" />
+                            Skills Assessment
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Implementation Plan</MudText>
+                                <MudText Typo="Typo.body2" Style="color:#666;">
+                                    @(string.IsNullOrEmpty(TrainingEvaluation.ImplementationPlan) ? "No implementation plan provided" : TrainingEvaluation.ImplementationPlan)
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Expected Impact</MudText>
+                                <MudText Typo="Typo.body2" Style="color:#666;">
+                                    @(string.IsNullOrEmpty(TrainingEvaluation.ExpectedImpact) ? "No expected impact described" : TrainingEvaluation.ExpectedImpact)
+                                </MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Certificate Information -->
+                @if (TrainingEvaluation.CertificateReceived)
+                {
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-4 mb-4"
+                                  Elevation="1"
+                                  Style="border-radius:8px;border-left:4px solid #D4A853;">
+                            <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Badge" Class="mr-2" />
+                                Certificate Information
+                            </MudText>
+
+                            <MudGrid>
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Certificate Received</MudText>
+                                    <MudChip T="string" Color="Color.Success">
+                                        Yes
+                                    </MudChip>
+                                </MudItem>
+
+                                @if (!string.IsNullOrEmpty(TrainingEvaluation.CertificateFileName))
+                                {
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2">File Name</MudText>
+                                        <MudText>@TrainingEvaluation.CertificateFileName</MudText>
+                                    </MudItem>
+
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2">File Size</MudText>
+                                        <MudText>@FormatFileSize(TrainingEvaluation.CertificateFileSize)</MudText>
+                                    </MudItem>
+
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2">Upload Date</MudText>
+                                        <MudText>@ParseDate(TrainingEvaluation.CertificateUploadDate)</MudText>
+                                    </MudItem>
+
+                                    @if (!string.IsNullOrEmpty(TrainingEvaluation.CertificateFileUrl))
+                                    {
+                                        <MudItem xs="12">
+                                            <MudButton Variant="Variant.Outlined"
+                                                       StartIcon="@Icons.Material.Filled.Download"
+                                                       Style="color: #00286E; border-color: #00286E;"
+                                                       OnClick="@(() => DownloadCertificate(TrainingEvaluation.CertificateFileUrl))">
+                                                Download Certificate
+                                            </MudButton>
+                                        </MudItem>
+                                    }
+                                }
+                                else
+                                {
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.body2" Style="color:#666;">
+                                            Certificate file not uploaded
+                                        </MudText>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            <div style="text-align: center; padding: 60px 20px;">
+                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No training evaluation data available</MudText>
+                <MudText Typo="Typo.body2" Style="color: #999;">Please select a valid training evaluation</MudText>
+            </div>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter]
+    public TrainingEvaluation? TrainingEvaluation { get; set; }
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; }
+
+    [Inject]
+    private IJSRuntime JS { get; set; }  
+
+    [Inject]
+    private ISnackbar SnackbarService { get; set; }  
+
+    [Inject]
+    private ITrainingEvaluationService TrainingEvaluationService { get; set; }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "Not specified";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double len = bytes;
+
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private Color GetStatusColor(string? status) => (status ?? "Unknown") switch
+    {
+        "Approved" => Color.Success,
+        "Submitted" => Color.Info,
+        "Pending" or "Open" => Color.Warning,
+        "Draft" => Color.Default,
+        "Rejected" => Color.Error,
+        _ => Color.Info
+    };
+
+    private Color GetApplicabilityColor(string? applicability) => (applicability ?? "Unknown") switch
+    {
+        "Yes" => Color.Success,
+        "Partially" => Color.Warning,
+        "No" => Color.Error,
+        _ => Color.Default
+    };
+
+    private async Task DownloadFileUsingJS(string fileName, byte[] fileData)
+    {
+        var base64Data = Convert.ToBase64String(fileData);
+        await JS.InvokeVoidAsync("downloadFile", fileName, base64Data);
+    }
+
+    private async Task DownloadCertificate(string fileUrl)
+    {
+        try
+        {
+            var fileData = await TrainingEvaluationService.DownloadCertificateAsync(fileUrl);
+            if (fileData != null)
+            {
+                var fileName = Path.GetFileName(fileUrl);
+                await DownloadFileUsingJS(fileName, fileData); 
+                SnackbarService.Add("Certificate downloaded successfully", Severity.Success);
+            }
+            else
+            {
+                SnackbarService.Add("Certificate file not found", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            SnackbarService.Add($"Error downloading certificate: {ex.Message}", Severity.Error);
+        }
+    }
+}

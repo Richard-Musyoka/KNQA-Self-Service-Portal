@@ -1,0 +1,1046 @@
+﻿@* JobRequisitionManagement.razor *@
+@page "/job-requisition"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IJobRequisitionService JobRequisitionService
+@inject ICurrentUserService CurrentUserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Job Requisition Management</PageTitle>
+
+<MudLayout>
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="600px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                @(isEditMode ? "Edit Job Requisition" : "New Job Requisition")
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@formValid">
+                <MudGrid Spacing="3">
+                    @if (isEditMode && editingRequisition != null)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingRequisition.ApplicationNo"
+                                          Label="Requisition Number"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+
+                    <!-- Job Position -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.JobPosition"
+                                      Label="Job Position *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Placeholder="e.g., Deputy Director, SAQA" />
+                    </MudItem>
+
+                    <!-- Employment Type -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.EmploymentType"
+                                   Label="Employment Type *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            <MudSelectItem Value="@("PERMANENT")">Permanent</MudSelectItem>
+                            <MudSelectItem Value="@("CONTRACT")">Contract</MudSelectItem>
+                            <MudSelectItem Value="@("TEMPORARY")">Temporary</MudSelectItem>
+                            <MudSelectItem Value="@("INTERN")">Intern</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Department Code -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.DepartmentCode"
+                                   Label="Department *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            <MudSelectItem Value="@("ADM")">Administration</MudSelectItem>
+                            <MudSelectItem Value="@("HR")">Human Resources</MudSelectItem>
+                            <MudSelectItem Value="@("FIN")">Finance</MudSelectItem>
+                            <MudSelectItem Value="@("IT")">Information Technology</MudSelectItem>
+                            <MudSelectItem Value="@("OPS")">Operations</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Reason for Recruitment -->
+                    <MudItem xs="12">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.ReasonForRecruitment"
+                                   Label="Reason for Recruitment *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            <MudSelectItem Value="@("New Position")">New Position</MudSelectItem>
+                            <MudSelectItem Value="@("Replacement")">Replacement</MudSelectItem>
+                            <MudSelectItem Value="@("Additional Staff")">Additional Staff</MudSelectItem>
+                            <MudSelectItem Value="@("Project Based")">Project Based</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Positions -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.Positions"
+                                      Label="Number of Positions *"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number"
+                                      Min="1"
+                                      Required="true" />
+                    </MudItem>
+
+                    <!-- Job Grade -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.JobGrade"
+                                   Label="Job Grade *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            <MudSelectItem Value="@("KNQA 1")">KNQA 1</MudSelectItem>
+                            <MudSelectItem Value="@("KNQA 2")">KNQA 2</MudSelectItem>
+                            <MudSelectItem Value="@("KNQA 3")">KNQA 3</MudSelectItem>
+                            <MudSelectItem Value="@("KNQA 4")">KNQA 4</MudSelectItem>
+                            <MudSelectItem Value="@("KNQA 5")">KNQA 5</MudSelectItem>
+                            <MudSelectItem Value="@("KNQA 6")">KNQA 6</MudSelectItem>
+                            <MudSelectItem Value="@("KNQA 7")">KNQA 7</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Gross Salary -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="grossSalaryString"
+                                      Label="Gross Salary *"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number"
+                                      Step="0.01"
+                                      Required="true"
+                                      Adornment="Adornment.Start"
+                                      AdornmentText="KES" />
+                    </MudItem>
+
+                    <!-- Contract Period -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.ContractPeriod"
+                                      Label="Contract Period"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="e.g., 2 years" />
+                    </MudItem>
+
+                 
+
+                    @if (formModel.ShortListingRequired)
+                    {
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="formModel.ShortlistingThreshold"
+                                          Label="Shortlisting Threshold *"
+                                          Variant="Variant.Outlined"
+                                          InputType="InputType.Number"
+                                          Min="1"
+                                          Required="true" />
+                        </MudItem>
+                    }
+
+                    <!-- Application Start Date -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="applicationStartDate"
+                                       Label="Application Start Date *"
+                                       Variant="Variant.Outlined"
+                                       Required="true" />
+                    </MudItem>
+
+                    <!-- Application Deadline -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="applicationDeadlineDate"
+                                       Label="Application Deadline *"
+                                       Variant="Variant.Outlined"
+                                       Required="true" />
+                    </MudItem>
+
+                    <!-- Expected Reporting Date -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="expectedReportingDate"
+                                       Label="Expected Reporting Date *"
+                                       Variant="Variant.Outlined"
+                                       Required="true" />
+                    </MudItem>
+
+                    <!-- Requested By -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.RequestedBy"
+                                      Label="Requested By *"
+                                      Variant="Variant.Outlined"
+                                      Required="true" />
+                    </MudItem>
+
+                    @if (isEditMode && editingRequisition != null)
+                    {
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="editingRequisition.Status"
+                                          Label="Status"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                    }
+
+                    <!-- Summary -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-3"
+                                  Elevation="0"
+                                  Style="background-color: #f5f5f5; border-left: 4px solid #D4A853;">
+                            <MudText Typo="Typo.body2" Style="color: #00286E; margin-bottom: 12px;">
+                                <strong>Requisition Summary</strong>
+                            </MudText>
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Position:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(formModel.JobPosition ?? "Not specified")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Positions:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@formModel.Positions</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Type:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(formModel.EmploymentType ?? "Not selected")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Salary:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>KES @(grossSalaryString ?? "0")</strong>
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => SaveJobRequisition())"
+                           Disabled="@(!formValid || saving)">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Saving...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Save" Size="Size.Small" />
+                        <span class="ms-2">@(isEditMode ? "Update" : "Submit")</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Work" Style="margin-right: 12px; vertical-align: middle;" />
+                            Job Requisition Management
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(currentEmployeeName))
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                @currentEmployeeName (@currentEmployeeNo)
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudButton Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   Style="background-color: #D4A853; color: white; font-weight: 600;"
+                                   Size="Size.Large"
+                                   OnClick="OpenCreateDrawer">
+                            New Requisition
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Error/Success Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => errorMessage = null"
+                          Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => successMessage = null"
+                          Class="mb-4">
+                    @successMessage
+                </MudAlert>
+            }
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </div>
+            }
+            else
+            {
+                <!-- Summary Cards -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Requisitions</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.TotalRequisitions</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.ListAlt" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Pending</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.PendingRequisitions</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.PendingActions" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Approved</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.ApprovedRequisitions</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Open Positions</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.OpenPositions</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Style="color: #00286E;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Job Requisitions Table -->
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853; margin-bottom: 20px">
+                    <MudTable Items="@FilteredJobRequisitions"
+                              Hover="true"
+                              Breakpoint="Breakpoint.Sm"
+                              Dense="true"
+                              Striped="true"
+                              Style="border-radius: 12px;">
+                        <ToolBarContent>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.FilterList" Style="color: #00286E;" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">Job Requisitions</MudText>
+                                    <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">@jobRequisitions.Count requisitions</MudChip>
+                                </MudStack>
+
+                                <MudStack Row="true" Spacing="2">
+                                    <MudTextField @bind-Value="searchTerm"
+                                                  Placeholder="Search requisitions..."
+                                                  Adornment="Adornment.Start"
+                                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                                  IconSize="Size.Medium"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  DebounceInterval="300"
+                                                  Style="min-width: 300px;"
+                                                  Class="mt-0">
+                                    </MudTextField>
+
+                                    <MudSelect @bind-Value="statusFilter"
+                                               Placeholder="Status"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Status</MudSelectItem>
+                                        <MudSelectItem Value="@("Pending")">Pending</MudSelectItem>
+                                        <MudSelectItem Value="@("Approved")">Approved</MudSelectItem>
+                                        <MudSelectItem Value="@("Rejected")">Rejected</MudSelectItem>
+                                        <MudSelectItem Value="@("Posted")">Posted</MudSelectItem>
+                                        <MudSelectItem Value="@("Draft")">Draft</MudSelectItem>
+                                    </MudSelect>
+
+                                    <MudSelect @bind-Value="departmentFilter"
+                                               Placeholder="Department"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Departments</MudSelectItem>
+                                        <MudSelectItem Value="@("ADM")">Administration</MudSelectItem>
+                                        <MudSelectItem Value="@("HR")">Human Resources</MudSelectItem>
+                                        <MudSelectItem Value="@("FIN")">Finance</MudSelectItem>
+                                        <MudSelectItem Value="@("IT")">Information Technology</MudSelectItem>
+                                        <MudSelectItem Value="@("OPS")">Operations</MudSelectItem>
+                                    </MudSelect>
+
+                                    <MudTooltip Text="Clear Filters">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                                       Style="color: #666; border: 1px solid #666;"
+                                                       OnClick="ClearFilters" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Refresh">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                                       Style="color: #00286E; border: 1px solid #00286E;"
+                                                       OnClick="RefreshList" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudStack>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>Requisition No.</MudTh>
+                            <MudTh>Job Position</MudTh>
+                            <MudTh>Department</MudTh>
+                            <MudTh>Employment Type</MudTh>
+                            <MudTh>Positions</MudTh>
+                            <MudTh>Grade</MudTh>
+                            <MudTh>Salary</MudTh>
+                            <MudTh>Deadline</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh Style="text-align: center;">Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Requisition No.">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">#@context.ApplicationNo</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Job Position">
+                                <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.JobPosition</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Department">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #D4A853; color: white;">@context.DepartmentCode</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Employment Type">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #666; color: white;">@context.EmploymentType</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Positions">
+                                <MudText Typo="Typo.body2">@context.Positions</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Grade">
+                                <MudText Typo="Typo.caption">@context.JobGrade</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Salary">
+                                <MudText Typo="Typo.caption">KES @context.GrossSalary.ToString("N2")</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Deadline">
+                                <MudText Typo="Typo.caption" Style="@GetDeadlineStyle(context.ApplicationDeadline)">
+                                    @ParseDate(context.ApplicationDeadline)
+                                </MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                @GetStatusChip(context.Status)
+                            </MudTd>
+                            <MudTd DataLabel="Actions" Style="text-align: center;">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Style="color: #00286E;"
+                                                       OnClick="@(() => ViewDetails(context))" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Edit Requisition">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Size="Size.Small"
+                                                       Style="color: #D4A853;"
+                                                       OnClick="@(() => OpenEditDrawer(context))" />
+                                    </MudTooltip>
+
+                                    @if (context.Status == "Approved" && !context.Posted)
+                                    {
+                                        <MudTooltip Text="Post Requisition">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Publish"
+                                                           Size="Size.Small"
+                                                           Style="color: #4caf50;"
+                                                           OnClick="@(() => PostRequisition(context))" />
+                                        </MudTooltip>
+                                    }
+
+                                    @if (context.Status == "Pending")
+                                    {
+                                        <MudTooltip Text="Delete Requisition">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Size="Size.Small"
+                                                           Style="color: #f44336;"
+                                                           OnClick="@(() => DeleteRequisition(context))" />
+                                        </MudTooltip>
+                                    }
+                                </MudStack>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div style="text-align: center; padding: 60px 20px;">
+                                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No job requisitions found</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria or create a new requisition</MudText>
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private List<JobRequisition> jobRequisitions = new();
+    private JobRequisitionSummary summaryData = new();
+    private bool loading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = "";
+    private string? statusFilter = "";
+    private string? departmentFilter = "";
+    private string currentEmployeeNo = "";
+    private string currentEmployeeName = "";
+
+    // Drawer variables
+    private bool drawerOpen = false;
+    private bool isEditMode = false;
+    private bool saving = false;
+    private MudForm form;
+    private bool formValid;
+    private JobRequisitionCreate formModel = new();
+    private string grossSalaryString = "0";
+    private DateTime? applicationStartDate;
+    private DateTime? applicationDeadlineDate;
+    private DateTime? expectedReportingDate;
+
+    // Store the requisition being edited
+    private JobRequisition editingRequisition = null;
+
+    private IEnumerable<JobRequisition> FilteredJobRequisitions
+    {
+        get
+        {
+            var filtered = jobRequisitions.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                filtered = filtered.Where(r =>
+                    (r.ApplicationNo?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (r.JobPosition?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (r.DepartmentCode?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                filtered = filtered.Where(r => r.Status == statusFilter);
+            }
+
+            if (!string.IsNullOrWhiteSpace(departmentFilter))
+            {
+                filtered = filtered.Where(r => r.DepartmentCode == departmentFilter);
+            }
+
+            return filtered.OrderByDescending(r => r.DocumentDate);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("🔍 JobRequisition page initialized");
+
+        try
+        {
+            currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+            currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+
+            Console.WriteLine($"🔍 Current User - Name: {currentEmployeeName}, EmployeeNo: {currentEmployeeNo}");
+
+            if (string.IsNullOrEmpty(currentEmployeeNo))
+            {
+                errorMessage = "Employee number not found. Please log in again.";
+                loading = false;
+                StateHasChanged();
+                return;
+            }
+
+            await LoadJobRequisitions();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error in OnInitializedAsync: {ex}");
+            errorMessage = $"Error initializing page: {ex.Message}";
+            loading = false;
+        }
+    }
+
+    private async Task LoadJobRequisitions()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            Console.WriteLine($"🔍 Loading job requisitions");
+
+            jobRequisitions = await JobRequisitionService.GetJobRequisitionsAsync(new JobRequisitionFilter());
+            summaryData = await JobRequisitionService.GetJobRequisitionSummaryAsync();
+
+            Console.WriteLine($"🔍 Loaded {jobRequisitions.Count} job requisitions");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load job requisitions: {ex.Message}";
+            Console.WriteLine($"❌ Error loading job requisitions: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OpenCreateDrawer()
+    {
+        isEditMode = false;
+        editingRequisition = null;
+        formModel = new JobRequisitionCreate
+        {
+            EmploymentType = "PERMANENT",
+            DepartmentCode = "ADM",
+            ReasonForRecruitment = "New Position",
+            Positions = 1,
+            JobGrade = "KNQA 7",
+            GrossSalary = 0,
+            HasGratuity = false,
+            ShortListingRequired = false,
+            ShortlistingThreshold = 0,
+            RequestedBy = currentEmployeeName
+        };
+        grossSalaryString = "0";
+        applicationStartDate = DateTime.Today;
+        applicationDeadlineDate = DateTime.Today.AddDays(14);
+        expectedReportingDate = DateTime.Today.AddMonths(1);
+
+        formValid = false;
+        drawerOpen = true;
+        StateHasChanged();
+    }
+
+    private async void OpenEditDrawer(JobRequisition requisition)
+    {
+        try
+        {
+            // Fetch the latest version with all fields
+            var currentRequisition = await JobRequisitionService.GetJobRequisitionAsync(requisition.ApplicationNo);
+
+            if (currentRequisition == null)
+            {
+                Snackbar.Add("Could not load requisition details", Severity.Error);
+                return;
+            }
+
+            isEditMode = true;
+            editingRequisition = currentRequisition;
+
+            formModel = new JobRequisitionCreate
+            {
+                JobPosition = currentRequisition.JobPosition,
+                EmploymentType = currentRequisition.EmploymentType,
+                DepartmentCode = currentRequisition.DepartmentCode,
+                ReasonForRecruitment = currentRequisition.ReasonForRecruitment,
+                Positions = currentRequisition.Positions,
+                JobGrade = currentRequisition.JobGrade,
+                GrossSalary = currentRequisition.GrossSalary,
+                ContractPeriod = currentRequisition.ContractPeriod,
+                HasGratuity = currentRequisition.HasGratuity,
+                ApplicationStartDate = currentRequisition.ApplicationStartDate,
+                ApplicationDeadline = currentRequisition.ApplicationDeadline,
+                ExpectedReportingDate = currentRequisition.ExpectedReportingDate,
+                RequestedBy = currentRequisition.RequestedBy,
+                ShortListingRequired = currentRequisition.ShortListingRequired,
+                ShortlistingThreshold = currentRequisition.ShortlistingThreshold
+            };
+
+            grossSalaryString = currentRequisition.GrossSalary.ToString();
+
+            if (DateTime.TryParse(currentRequisition.ApplicationStartDate, out var start))
+            {
+                applicationStartDate = start;
+            }
+            else
+            {
+                applicationStartDate = DateTime.Today;
+            }
+
+            if (DateTime.TryParse(currentRequisition.ApplicationDeadline, out var deadline))
+            {
+                applicationDeadlineDate = deadline;
+            }
+            else
+            {
+                applicationDeadlineDate = DateTime.Today.AddDays(14);
+            }
+
+            if (DateTime.TryParse(currentRequisition.ExpectedReportingDate, out var reporting))
+            {
+                expectedReportingDate = reporting;
+            }
+            else
+            {
+                expectedReportingDate = DateTime.Today.AddMonths(1);
+            }
+
+            drawerOpen = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading requisition for edit: {ex.Message}");
+            Snackbar.Add("Failed to load requisition for editing", Severity.Error);
+        }
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+        formModel = new JobRequisitionCreate();
+        grossSalaryString = "0";
+        applicationStartDate = null;
+        applicationDeadlineDate = null;
+        expectedReportingDate = null;
+        editingRequisition = null;
+    }
+
+    private async Task SaveJobRequisition()
+    {
+        try
+        {
+            await form.Validate();
+
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            // Validation
+            if (!applicationStartDate.HasValue)
+            {
+                Snackbar.Add("Please select an application start date", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (!applicationDeadlineDate.HasValue)
+            {
+                Snackbar.Add("Please select an application deadline", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (!expectedReportingDate.HasValue)
+            {
+                Snackbar.Add("Please select an expected reporting date", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (applicationDeadlineDate <= applicationStartDate)
+            {
+                Snackbar.Add("Application deadline must be after start date", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.JobPosition))
+            {
+                Snackbar.Add("Please enter a job position", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (formModel.Positions <= 0)
+            {
+                Snackbar.Add("Number of positions must be greater than 0", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            // Parse gross salary
+            if (!decimal.TryParse(grossSalaryString, out var grossSalary))
+            {
+                Snackbar.Add("Please enter a valid gross salary", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (formModel.ShortListingRequired && formModel.ShortlistingThreshold <= 0)
+            {
+                Snackbar.Add("Shortlisting threshold must be greater than 0 when shortlisting is required", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            // Prepare the requisition
+            formModel.GrossSalary = grossSalary;
+            formModel.ApplicationStartDate = applicationStartDate.Value.ToString("yyyy-MM-dd");
+            formModel.ApplicationDeadline = applicationDeadlineDate.Value.ToString("yyyy-MM-dd");
+            formModel.ExpectedReportingDate = expectedReportingDate.Value.ToString("yyyy-MM-dd");
+
+            Console.WriteLine($"📤 {(isEditMode ? "Updating" : "Creating")} job requisition:");
+            Console.WriteLine($"   Position: {formModel.JobPosition}");
+            Console.WriteLine($"   Department: {formModel.DepartmentCode}");
+            Console.WriteLine($"   Positions: {formModel.Positions}");
+            Console.WriteLine($"   Salary: {formModel.GrossSalary}");
+            Console.WriteLine($"   Deadline: {formModel.ApplicationDeadline}");
+
+            bool success;
+            string message;
+
+            if (isEditMode && editingRequisition != null)
+            {
+                // For UPDATE: Create a JobRequisitionUpdate model
+                var updateModel = new JobRequisitionUpdate
+                {
+                    ApplicationNo = editingRequisition.ApplicationNo,
+                    JobPosition = formModel.JobPosition,
+                    EmploymentType = formModel.EmploymentType,
+                    DepartmentCode = formModel.DepartmentCode,
+                    ReasonForRecruitment = formModel.ReasonForRecruitment,
+                    Positions = formModel.Positions,
+                    JobGrade = formModel.JobGrade,
+                    GrossSalary = formModel.GrossSalary,
+                    ContractPeriod = formModel.ContractPeriod,
+                    HasGratuity = formModel.HasGratuity,
+                    ApplicationStartDate = formModel.ApplicationStartDate,
+                    ApplicationDeadline = formModel.ApplicationDeadline,
+                    ExpectedReportingDate = formModel.ExpectedReportingDate,
+                    RequestedBy = formModel.RequestedBy,
+                    Status = editingRequisition.Status,
+                    ShortListingRequired = formModel.ShortListingRequired,
+                    ShortlistingThreshold = formModel.ShortlistingThreshold,
+                    Posted = editingRequisition.Posted
+                };
+
+                Console.WriteLine($"🔄 Updating requisition {updateModel.ApplicationNo} with ETag: {editingRequisition.ODataEtag}");
+
+                // Call Update method with update model and etag
+                var updateResult = await JobRequisitionService.UpdateJobRequisitionAsync(updateModel, editingRequisition.ODataEtag);
+                success = updateResult.Success;
+                message = updateResult.Message;
+            }
+            else
+            {
+                // For CREATE
+                var createResult = await JobRequisitionService.CreateJobRequisitionAsync(formModel);
+                success = createResult.Success;
+                message = createResult.Message;
+            }
+
+            if (success)
+            {
+                Snackbar.Add(isEditMode ? "Job requisition updated successfully!" : "Job requisition created successfully!", Severity.Success);
+                successMessage = message;
+                CloseDrawer();
+                await LoadJobRequisitions();
+            }
+            else
+            {
+                Snackbar.Add(message, Severity.Error, config => { config.VisibleStateDuration = 8000; });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in SaveJobRequisition: {ex}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshList()
+    {
+        await LoadJobRequisitions();
+        Snackbar.Add("List refreshed successfully", Severity.Success);
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        statusFilter = "";
+        departmentFilter = "";
+    }
+
+    private void ViewDetails(JobRequisition requisition)
+    {
+        var parameters = new DialogParameters { ["JobRequisition"] = requisition };
+        DialogService.Show<JobRequisitionDetails>("Job Requisition Details", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+    }
+
+    private async Task DeleteRequisition(JobRequisition requisition)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Job Requisition",
+            $"Are you sure you want to delete requisition '{requisition.ApplicationNo}'? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: new DialogOptions { MaxWidth = MaxWidth.Small, CloseButton = true });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var deleted = await JobRequisitionService.DeleteJobRequisitionAsync(requisition.ApplicationNo, requisition.ODataEtag);
+
+                if (deleted)
+                {
+                    Snackbar.Add($"Requisition {requisition.ApplicationNo} deleted successfully", Severity.Success);
+                    await LoadJobRequisitions();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete requisition", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task PostRequisition(JobRequisition requisition)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Post Job Requisition",
+            $"Are you sure you want to post requisition '{requisition.ApplicationNo}'? This will make it available for applications.",
+            yesText: "Post",
+            cancelText: "Cancel",
+            options: new DialogOptions { MaxWidth = MaxWidth.Small, CloseButton = true });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var posted = await JobRequisitionService.PostJobRequisitionAsync(requisition.ApplicationNo, requisition.ODataEtag);
+
+                if (posted)
+                {
+                    Snackbar.Add($"Requisition {requisition.ApplicationNo} posted successfully", Severity.Success);
+                    await LoadJobRequisitions();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to post requisition", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to post: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private string GetDeadlineStyle(string? deadline)
+    {
+        if (string.IsNullOrEmpty(deadline))
+            return "";
+
+        if (DateTime.TryParse(deadline, out var date))
+        {
+            if (date < DateTime.Today)
+                return "color: #f44336;";
+            else if (date <= DateTime.Today.AddDays(7))
+                return "color: #D4A853;";
+            else
+                return "color: #4caf50;";
+        }
+
+        return "";
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "Unknown") switch
+        {
+            "Approved" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Pending" => ("background-color: #D4A853; color: white;", Icons.Material.Filled.PendingActions),
+            "Rejected" => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel),
+            "Posted" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.Publish),
+            "Draft" => ("background-color: #999; color: white;", Icons.Material.Filled.Drafts),
+            _ => ("background-color: #666; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

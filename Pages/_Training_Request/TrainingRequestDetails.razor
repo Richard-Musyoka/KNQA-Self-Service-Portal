@@ -1,0 +1,1044 @@
+﻿@* TrainingRequestManagement.razor *@
+@page "/training-request"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject ITrainingRequestService TrainingRequestService
+@inject ICurrentUserService CurrentUserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Training Request Management</PageTitle>
+
+<MudLayout>
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="600px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                @(isEditMode ? "Edit Training Request" : "New Training Request")
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@formValid">
+                <MudGrid Spacing="3">
+                    @if (isEditMode && editingRequest != null)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingRequest.RequestNo"
+                                          Label="Request Number"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+
+                    <!-- Course Title -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.CourseTitle"
+                                      Label="Course Title *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Placeholder="e.g., Communication Skills" />
+                    </MudItem>
+
+                    <!-- Training Institution -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.TrainingInstitution"
+                                      Label="Training Institution *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Placeholder="e.g., promate venture" />
+                    </MudItem>
+
+                    <!-- Training Type -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.TrainingType"
+                                   Label="Training Type *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            <MudSelectItem Value="@("Technical")">Technical</MudSelectItem>
+                            <MudSelectItem Value="@("Soft Skills")">Soft Skills</MudSelectItem>
+                            <MudSelectItem Value="@("Management")">Management</MudSelectItem>
+                            <MudSelectItem Value="@("Leadership")">Leadership</MudSelectItem>
+                            <MudSelectItem Value="@("Compliance")">Compliance</MudSelectItem>
+                            <MudSelectItem Value="@("Professional Development")">Professional Development</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Training Mode -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.TrainingMode"
+                                   Label="Training Mode *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            <MudSelectItem Value="@("Online")">Online</MudSelectItem>
+                            <MudSelectItem Value="@("In-person")">In-person</MudSelectItem>
+                            <MudSelectItem Value="@("Hybrid")">Hybrid</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Start Date -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="startDate"
+                                       Label="Start Date *"
+                                       Variant="Variant.Outlined"
+                                       Required="true" />
+                    </MudItem>
+
+                    <!-- End Date -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="endDate"
+                                       Label="End Date *"
+                                       Variant="Variant.Outlined"
+                                       Required="true" />
+                    </MudItem>
+
+                    <!-- Course Duration -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.CourseDuration"
+                                      Label="Course Duration *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Placeholder="e.g., 2 weeks, 3 months" />
+                    </MudItem>
+
+                    <!-- Estimated Cost -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="estimatedCostString"
+                                      Label="Estimated Cost (KES) *"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number"
+                                      Step="0.01"
+                                      Required="true"
+                                      Adornment="Adornment.Start"
+                                      AdornmentText="KES" />
+                    </MudItem>
+
+                    <!-- Funding Information -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Style="color:#00286E;margin-bottom:8px;">Funding Information</MudText>
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudSelect T="string"
+                                           @bind-Value="fundingType"
+                                           Label="Funding Type"
+                                           Variant="Variant.Outlined">
+                                    <MudSelectItem Value="@("Self")">Self-Funded</MudSelectItem>
+                                    <MudSelectItem Value="@("Organization")">Organization Funded</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="formModel.SponsoringBody"
+                                              Label="Sponsoring Body"
+                                              Variant="Variant.Outlined"
+                                              Placeholder="Leave empty if self-funded" />
+                            </MudItem>
+                        </MudGrid>
+                    </MudItem>
+
+                    <!-- Academic Qualification -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.HighestAcademicQualification"
+                                   Label="Highest Academic Qualification *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            <MudSelectItem Value="@("Certificate")">Certificate</MudSelectItem>
+                            <MudSelectItem Value="@("Diploma")">Diploma</MudSelectItem>
+                            <MudSelectItem Value="@("Bachelor's Degree")">Bachelor's Degree</MudSelectItem>
+                            <MudSelectItem Value="@("Master's Degree")">Master's Degree</MudSelectItem>
+                            <MudSelectItem Value="@("PhD")">PhD</MudSelectItem>
+                            <MudSelectItem Value="@("Other")">Other</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+               
+
+                    <!-- Justification -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.Justification"
+                                      Label="Justification *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Lines="3"
+                                      Placeholder="Explain why this training is needed (minimum 50 characters)" />
+                    </MudItem>
+
+                    <!-- Expected Outcomes -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.ExpectedOutcomes"
+                                      Label="Expected Outcomes *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Lines="3"
+                                      Placeholder="Describe what you expect to achieve from this training (minimum 30 characters)" />
+                    </MudItem>
+
+                    @if (isEditMode && editingRequest != null)
+                    {
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="editingRequest.Status"
+                                          Label="Status"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                    }
+
+                    <!-- Summary -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-3"
+                                  Elevation="0"
+                                  Style="background-color: #f5f5f5; border-left: 4px solid #D4A853;">
+                            <MudText Typo="Typo.body2" Style="color: #00286E; margin-bottom: 12px;">
+                                <strong>Request Summary</strong>
+                            </MudText>
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Course:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(formModel.CourseTitle ?? "Not specified")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Institution:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(formModel.TrainingInstitution ?? "Not specified")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Duration:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(formModel.CourseDuration ?? "Not specified")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Cost:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>KES @(estimatedCostString ?? "0")</strong>
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => SaveTrainingRequest())"
+                           Disabled="@(!formValid || saving)">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Saving...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Save" Size="Size.Small" />
+                        <span class="ms-2">@(isEditMode ? "Update" : "Submit")</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.School" Style="margin-right: 12px; vertical-align: middle;" />
+                            Training Request Management
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(currentEmployeeName))
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                @currentEmployeeName (@currentEmployeeNo)
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudButton Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   Style="background-color: #D4A853; color: white; font-weight: 600;"
+                                   Size="Size.Large"
+                                   OnClick="OpenCreateDrawer">
+                            New Request
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Error/Success Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => errorMessage = null"
+                          Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => successMessage = null"
+                          Class="mb-4">
+                    @successMessage
+                </MudAlert>
+            }
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </div>
+            }
+            else
+            {
+                <!-- Summary Cards -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Requests</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.TotalRequests</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.ListAlt" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Pending</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.PendingRequests</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.PendingActions" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Approved</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.ApprovedRequests</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Total Budget</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">KES @summaryData.TotalEstimatedCost.ToString("N0")</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Size="Size.Large" Style="color: #00286E;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Training Requests Table -->
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853; margin-bottom: 20px">
+                    <MudTable Items="@FilteredTrainingRequests"
+                              Hover="true"
+                              Breakpoint="Breakpoint.Sm"
+                              Dense="true"
+                              Striped="true"
+                              Style="border-radius: 12px;">
+                        <ToolBarContent>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.FilterList" Style="color: #00286E;" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">Training Requests</MudText>
+                                    <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">@trainingRequests.Count requests</MudChip>
+                                </MudStack>
+
+                                <MudStack Row="true" Spacing="2">
+                                    <MudTextField @bind-Value="searchTerm"
+                                                  Placeholder="Search requests..."
+                                                  Adornment="Adornment.Start"
+                                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                                  IconSize="Size.Medium"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  DebounceInterval="300"
+                                                  Style="min-width: 300px;"
+                                                  Class="mt-0">
+                                    </MudTextField>
+
+                                    <MudSelect @bind-Value="statusFilter"
+                                               Placeholder="Status"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Status</MudSelectItem>
+                                        <MudSelectItem Value="@("Pending")">Pending</MudSelectItem>
+                                        <MudSelectItem Value="@("Approved")">Approved</MudSelectItem>
+                                        <MudSelectItem Value="@("Rejected")">Rejected</MudSelectItem>
+                                        <MudSelectItem Value="@("Completed")">Completed</MudSelectItem>
+                                        <MudSelectItem Value="@("Converted")">Converted</MudSelectItem>
+                                        <MudSelectItem Value="@("Released")">Released</MudSelectItem>
+                                    </MudSelect>
+
+                                    <MudSelect @bind-Value="trainingTypeFilter"
+                                               Placeholder="Training Type"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Types</MudSelectItem>
+                                        <MudSelectItem Value="@("Technical")">Technical</MudSelectItem>
+                                        <MudSelectItem Value="@("Soft Skills")">Soft Skills</MudSelectItem>
+                                        <MudSelectItem Value="@("Management")">Management</MudSelectItem>
+                                        <MudSelectItem Value="@("Leadership")">Leadership</MudSelectItem>
+                                        <MudSelectItem Value="@("Compliance")">Compliance</MudSelectItem>
+                                        <MudSelectItem Value="@("Professional Development")">Professional Development</MudSelectItem>
+                                    </MudSelect>
+
+                                    <MudTooltip Text="Clear Filters">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                                       Style="color: #666; border: 1px solid #666;"
+                                                       OnClick="ClearFilters" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Refresh">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                                       Style="color: #00286E; border: 1px solid #00286E;"
+                                                       OnClick="RefreshList" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudStack>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>Request No.</MudTh>
+                            <MudTh>Course Title</MudTh>
+                            <MudTh>Institution</MudTh>
+                            <MudTh>Training Type</MudTh>
+                            <MudTh>Start Date</MudTh>
+                            <MudTh>End Date</MudTh>
+                            <MudTh>Estimated Cost</MudTh>
+                            <MudTh>Funding</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh Style="text-align: center;">Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Request No.">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">#@context.RequestNo</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Course Title">
+                                <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.CourseTitle</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Institution">
+                                <MudText Typo="Typo.caption">@context.TrainingInstitution</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Training Type">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #D4A853; color: white;">@context.TrainingType</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Start Date">
+                                <MudText Typo="Typo.caption">@ParseDate(context.StartDate)</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="End Date">
+                                <MudText Typo="Typo.caption">@ParseDate(context.EndDate)</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Estimated Cost">
+                                <MudText Typo="Typo.caption">KES @context.EstimatedCost.ToString("N2")</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Funding">
+                                <MudChip T="string" Size="Size.Small" Color="@(context.SelfFunded ? Color.Info : Color.Success)">
+                                    @(context.SelfFunded ? "Self" : "Org")
+                                </MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                @GetStatusChip(context.Status)
+                            </MudTd>
+                            <MudTd DataLabel="Actions" Style="text-align: center;">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Style="color: #00286E;"
+                                                       OnClick="@(() => ViewDetails(context))" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Edit Request">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Size="Size.Small"
+                                                       Style="color: #D4A853;"
+                                                       OnClick="@(() => OpenEditDrawer(context))" />
+                                    </MudTooltip>
+
+                                    @if (context.Status == "Approved" && !context.ConvertedToPlan)
+                                    {
+                                        <MudTooltip Text="Convert to Plan">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Transform"
+                                                           Size="Size.Small"
+                                                           Style="color: #4caf50;"
+                                                           OnClick="@(() => ConvertToPlan(context))" />
+                                        </MudTooltip>
+                                    }
+
+                                    @if (context.Status == "Pending")
+                                    {
+                                        <MudTooltip Text="Delete Request">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Size="Size.Small"
+                                                           Style="color: #f44336;"
+                                                           OnClick="@(() => DeleteRequest(context))" />
+                                        </MudTooltip>
+                                    }
+                                </MudStack>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div style="text-align: center; padding: 60px 20px;">
+                                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No training requests found</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria or create a new request</MudText>
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private List<TrainingRequest> trainingRequests = new();
+    private TrainingRequestSummary summaryData = new();
+    private bool loading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = "";
+    private string? statusFilter = "";
+    private string? trainingTypeFilter = "";
+    private string currentEmployeeNo = "";
+    private string currentEmployeeName = "";
+
+    // Drawer variables
+    private bool drawerOpen = false;
+    private bool isEditMode = false;
+    private bool saving = false;
+    private MudForm form;
+    private bool formValid;
+    private TrainingRequestCreate formModel = new();
+    private string estimatedCostString = "0";
+    private string fundingType = "Organization";
+    private DateTime? startDate;
+    private DateTime? endDate;
+
+    // Store the request being edited
+    private TrainingRequest editingRequest = null;
+
+    private IEnumerable<TrainingRequest> FilteredTrainingRequests
+    {
+        get
+        {
+            var filtered = trainingRequests.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                filtered = filtered.Where(r =>
+                    (r.RequestNo?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (r.CourseTitle?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (r.TrainingInstitution?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                filtered = filtered.Where(r => r.Status == statusFilter);
+            }
+
+            if (!string.IsNullOrWhiteSpace(trainingTypeFilter))
+            {
+                filtered = filtered.Where(r => r.TrainingType == trainingTypeFilter);
+            }
+
+            return filtered.OrderByDescending(r => r.RequestDate);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("🔍 TrainingRequest page initialized");
+
+        try
+        {
+            currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+            currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+
+            Console.WriteLine($"🔍 Current User - Name: {currentEmployeeName}, EmployeeNo: {currentEmployeeNo}");
+
+            if (string.IsNullOrEmpty(currentEmployeeNo))
+            {
+                errorMessage = "Employee number not found. Please log in again.";
+                loading = false;
+                StateHasChanged();
+                return;
+            }
+
+            await LoadTrainingRequests();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error in OnInitializedAsync: {ex}");
+            errorMessage = $"Error initializing page: {ex.Message}";
+            loading = false;
+        }
+    }
+
+    private async Task LoadTrainingRequests()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            Console.WriteLine($"🔍 Loading training requests for employee: {currentEmployeeNo}");
+
+            trainingRequests = await TrainingRequestService.GetTrainingRequestsByEmployeeAsync(currentEmployeeNo);
+            summaryData = await TrainingRequestService.GetTrainingRequestSummaryAsync(currentEmployeeNo);
+
+            Console.WriteLine($"🔍 Loaded {trainingRequests.Count} training requests");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load training requests: {ex.Message}";
+            Console.WriteLine($"❌ Error loading training requests: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OpenCreateDrawer()
+    {
+        isEditMode = false;
+        editingRequest = null;
+
+        // Use hardcoded values or get from available sources
+        formModel = new TrainingRequestCreate
+        {
+            EmployeeNo = currentEmployeeNo,
+            JobPosition = GetEmployeeJobPosition(),  // Synchronous method
+            DepartmentCode = GetEmployeeDepartmentCode(),  // Synchronous method
+            HighestAcademicQualification = "Certificate",
+            CurrentlyPursuingTraining = false,
+            TrainingType = "Professional Development",
+            TrainingMode = "Online",
+            CourseDuration = "2 weeks",
+            EstimatedCost = 0,
+            SelfFunded = false,
+            Justification = "",
+            ExpectedOutcomes = ""
+        };
+        estimatedCostString = "0";
+        fundingType = "Organization";
+        startDate = DateTime.Today;
+        endDate = DateTime.Today.AddDays(14);
+
+        formValid = false;
+        drawerOpen = true;
+        StateHasChanged();
+    }
+
+    private string GetEmployeeJobPosition()
+    {
+        // For now, return hardcoded value
+        // You can enhance this later to get from user claims or another service
+        return "Employee";
+    }
+
+    private string GetEmployeeDepartmentCode()
+    {
+        // For now, return hardcoded value
+        // You can enhance this later to get from user claims or another service
+        return "ADM";
+    }
+
+    // Remove the async version of OpenEditDrawer and make it synchronous
+    private void OpenEditDrawer(TrainingRequest request)
+    {
+        try
+        {
+            // Don't fetch the latest version for now - use the provided request
+            // You can enhance this later to fetch from service
+            isEditMode = true;
+            editingRequest = request;
+
+            formModel = new TrainingRequestCreate
+            {
+                EmployeeNo = request.EmployeeNo,
+                JobPosition = request.JobPosition,
+                DepartmentCode = request.DepartmentCode,
+                HighestAcademicQualification = request.HighestAcademicQualification,
+                CurrentlyPursuingTraining = request.CurrentlyPursuingTraining,
+                TrainingInstitution = request.TrainingInstitution,
+                CourseTitle = request.CourseTitle,
+                SponsoringBody = request.SponsoringBody,
+                SelfFunded = request.SelfFunded,
+                StartDate = request.StartDate,
+                EndDate = request.EndDate,
+                CourseDuration = request.CourseDuration,
+                TrainingType = request.TrainingType,
+                TrainingMode = request.TrainingMode,
+                EstimatedCost = request.EstimatedCost,
+                Justification = request.Justification ?? "",
+                ExpectedOutcomes = request.ExpectedOutcomes ?? ""
+            };
+
+            estimatedCostString = request.EstimatedCost.ToString();
+            fundingType = request.SelfFunded ? "Self" : "Organization";
+
+            if (DateTime.TryParse(request.StartDate, out var start))
+            {
+                startDate = start;
+            }
+            else
+            {
+                startDate = DateTime.Today;
+            }
+
+            if (DateTime.TryParse(request.EndDate, out var end))
+            {
+                endDate = end;
+            }
+            else
+            {
+                endDate = DateTime.Today.AddDays(14);
+            }
+
+            drawerOpen = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading request for edit: {ex.Message}");
+            Snackbar.Add("Failed to load request for editing", Severity.Error);
+        }
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+        formModel = new TrainingRequestCreate();
+        estimatedCostString = "0";
+        fundingType = "Organization";
+        startDate = null;
+        endDate = null;
+        editingRequest = null;
+    }
+
+    private async Task SaveTrainingRequest()
+    {
+        try
+        {
+            await form.Validate();
+
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            // Validation
+            if (!startDate.HasValue)
+            {
+                Snackbar.Add("Please select a start date", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (!endDate.HasValue)
+            {
+                Snackbar.Add("Please select an end date", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (endDate <= startDate)
+            {
+                Snackbar.Add("End date must be after start date", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.CourseTitle))
+            {
+                Snackbar.Add("Please enter a course title", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.TrainingInstitution))
+            {
+                Snackbar.Add("Please enter a training institution", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            // Parse estimated cost
+            if (!decimal.TryParse(estimatedCostString, out var estimatedCost))
+            {
+                Snackbar.Add("Please enter a valid estimated cost", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (estimatedCost < 0)
+            {
+                Snackbar.Add("Estimated cost cannot be negative", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (formModel.Justification.Length < 50)
+            {
+                Snackbar.Add("Justification must be at least 50 characters", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (formModel.ExpectedOutcomes.Length < 30)
+            {
+                Snackbar.Add("Expected outcomes must be at least 30 characters", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            // Prepare the request
+            formModel.EstimatedCost = estimatedCost;
+            formModel.SelfFunded = fundingType == "Self";
+            formModel.StartDate = startDate.Value.ToString("yyyy-MM-dd");
+            formModel.EndDate = endDate.Value.ToString("yyyy-MM-dd");
+
+            Console.WriteLine($"📤 {(isEditMode ? "Updating" : "Creating")} training request:");
+            Console.WriteLine($"   Course: {formModel.CourseTitle}");
+            Console.WriteLine($"   Institution: {formModel.TrainingInstitution}");
+            Console.WriteLine($"   Duration: {formModel.CourseDuration}");
+            Console.WriteLine($"   Cost: {formModel.EstimatedCost}");
+            Console.WriteLine($"   Start: {formModel.StartDate}");
+
+            bool success;
+            string message;
+
+            if (isEditMode && editingRequest != null)
+            {
+                // For UPDATE: Create a TrainingRequestUpdate model
+                var updateModel = new TrainingRequestUpdate
+                {
+                    RequestNo = editingRequest.RequestNo,
+                    HighestAcademicQualification = formModel.HighestAcademicQualification,
+                    CurrentlyPursuingTraining = formModel.CurrentlyPursuingTraining,
+                    TrainingInstitution = formModel.TrainingInstitution,
+                    CourseTitle = formModel.CourseTitle,
+                    SponsoringBody = formModel.SponsoringBody,
+                    SelfFunded = formModel.SelfFunded,
+                    StartDate = formModel.StartDate,
+                    EndDate = formModel.EndDate,
+                    CourseDuration = formModel.CourseDuration,
+                    TrainingType = formModel.TrainingType,
+                    TrainingMode = formModel.TrainingMode,
+                    EstimatedCost = formModel.EstimatedCost,
+                    Justification = formModel.Justification,
+                    ExpectedOutcomes = formModel.ExpectedOutcomes,
+                    Status = editingRequest.Status,
+                    ConvertedToPlan = editingRequest.ConvertedToPlan
+                };
+
+                Console.WriteLine($"🔄 Updating request {updateModel.RequestNo} with ETag: {editingRequest.ODataEtag}");
+
+                // Call Update method with update model and etag
+                var updateResult = await TrainingRequestService.UpdateTrainingRequestAsync(updateModel, editingRequest.ODataEtag);
+                success = updateResult.Success;
+                message = updateResult.Message;
+            }
+            else
+            {
+                // For CREATE
+                var createResult = await TrainingRequestService.CreateTrainingRequestAsync(formModel);
+                success = createResult.Success;
+                message = createResult.Message;
+            }
+
+            if (success)
+            {
+                Snackbar.Add(isEditMode ? "Training request updated successfully!" : "Training request created successfully!", Severity.Success);
+                successMessage = message;
+                CloseDrawer();
+                await LoadTrainingRequests();
+            }
+            else
+            {
+                Snackbar.Add(message, Severity.Error, config => { config.VisibleStateDuration = 8000; });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in SaveTrainingRequest: {ex}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshList()
+    {
+        await LoadTrainingRequests();
+        Snackbar.Add("List refreshed successfully", Severity.Success);
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        statusFilter = "";
+        trainingTypeFilter = "";
+    }
+
+    private void ViewDetails(TrainingRequest request)
+    {
+        var parameters = new DialogParameters { ["TrainingRequest"] = request };
+        DialogService.Show<TrainingRequestDetails>("Training Request Details", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+    }
+
+    private async Task DeleteRequest(TrainingRequest request)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Training Request",
+            $"Are you sure you want to delete request '{request.RequestNo}'? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: new DialogOptions { MaxWidth = MaxWidth.Small, CloseButton = true });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var deleted = await TrainingRequestService.DeleteTrainingRequestAsync(request.RequestNo, request.ODataEtag);
+
+                if (deleted)
+                {
+                    Snackbar.Add($"Request {request.RequestNo} deleted successfully", Severity.Success);
+                    await LoadTrainingRequests();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete request", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ConvertToPlan(TrainingRequest request)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Convert to Training Plan",
+            $"Are you sure you want to convert request '{request.RequestNo}' to a training plan?",
+            yesText: "Convert",
+            cancelText: "Cancel",
+            options: new DialogOptions { MaxWidth = MaxWidth.Small, CloseButton = true });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var converted = await TrainingRequestService.ConvertToTrainingPlanAsync(request.RequestNo, request.ODataEtag);
+
+                if (converted)
+                {
+                    Snackbar.Add($"Request {request.RequestNo} converted to plan successfully", Severity.Success);
+                    await LoadTrainingRequests();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to convert to plan", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to convert: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "Unknown") switch
+        {
+            "Approved" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Pending" => ("background-color: #D4A853; color: white;", Icons.Material.Filled.PendingActions),
+            "Rejected" => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel),
+            "Completed" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.DoneAll),
+            "Converted" => ("background-color: #9c27b0; color: white;", Icons.Material.Filled.Transform),
+            "Released" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.Publish),
+            "Draft" => ("background-color: #999; color: white;", Icons.Material.Filled.Drafts),
+            _ => ("background-color: #666; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

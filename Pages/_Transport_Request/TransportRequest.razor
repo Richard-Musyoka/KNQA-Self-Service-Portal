@@ -1,0 +1,1126 @@
+﻿@page "/transport-request"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject ITransportService TransportService
+@inject ICurrentUserService CurrentUserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Transport Request</PageTitle>
+
+<MudLayout>
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="600px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.DirectionsCar)"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                @(isEditMode ? "Edit Request" : "New Transport Request")
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@formValid">
+                <MudGrid Spacing="3">
+                    @if (isEditMode && editingRequest != null)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingRequest.RequestNo"
+                                          Label="Request Number"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingRequest.Status"
+                                          Label="Status"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+
+                    <!-- Purpose of Travel -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.Purpose"
+                                      Label="Purpose of Travel *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Counter="200"
+                                      MaxLength="200" />
+                    </MudItem>
+
+                    <!-- Destination/Itinerary -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.Destination"
+                                      Label="Destination/Itinerary *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Lines="2"
+                                      Counter="500"
+                                      MaxLength="500" />
+                    </MudItem>
+
+                    <!-- Trip Dates -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="startDate"
+                                       Label="Trip Start Date *"
+                                       DateFormat="yyyy-MM-dd"
+                                       Required="true"
+                                       MinDate="@DateTime.Now"
+                                       MaxDate="@DateTime.Now.AddMonths(3)"
+                                       Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="endDate"
+                                       Label="Trip End Date *"
+                                       DateFormat="yyyy-MM-dd"
+                                       Required="true"
+                                       MinDate="@DateTime.Now"
+                                       MaxDate="@DateTime.Now.AddMonths(3)"
+                                       Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <!-- Trip Times -->
+                    <MudItem xs="12" md="6">
+                        <MudTimePicker @bind-Time="startTime"
+                                       Label="Departure Time *"
+                                       Required="true"
+                                       Variant="Variant.Outlined"
+                                       MinTime="@TimeSpan.FromHours(6)"
+                                       MaxTime="@TimeSpan.FromHours(20)" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTimePicker @bind-Time="returnTime"
+                                       Label="Return Time *"
+                                       Required="true"
+                                       Variant="Variant.Outlined"
+                                       MinTime="@TimeSpan.FromHours(6)"
+                                       MaxTime="@TimeSpan.FromHours(20)" />
+                    </MudItem>
+
+                    <!-- Passenger Details -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.NoOfEmployees"
+                                      Label="Number of Employees *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      InputType="InputType.Number"
+                                      Min="1"
+                                      Max="50" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.NoOfNonEmployees"
+                                      Label="Number of Non-Employees"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number"
+                                      Min="0"
+                                      Max="50" />
+                    </MudItem>
+
+                    <!-- Vehicle Selection -->
+                    <MudItem xs="12">
+                        <MudSelect T="FleetVehicle"
+                                   @bind-Value="selectedVehicle"
+                                   Label="Select Vehicle (Optional)"
+                                   Variant="Variant.Outlined"
+                                   ToStringFunc="@(vehicle => vehicle != null ? $"{vehicle.Description} ({vehicle.RegistrationNo}) - {vehicle.VehicleType}" : "")"
+                                   SearchFunc="@SearchVehicles"
+                                   Clearable="true">
+                            <ChildContent>
+                                @foreach (var vehicle in availableVehicles)
+                                {
+                                    <MudSelectItem Value="@vehicle">
+                                        <div style="padding: 8px;">
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                                                @vehicle.Description (@vehicle.RegistrationNo)
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Style="color: #666;">
+                                                @vehicle.VehicleType • Capacity: @vehicle.Capacity • Status:
+                                                <span style="color: @(vehicle.Status == VehicleStatus.AVAILABLE ? "#4caf50" : "#f44336")">
+                                                    @vehicle.Status
+                                                </span>
+                                            </MudText>
+                                        </div>
+                                    </MudSelectItem>
+                                }
+                            </ChildContent>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Driver Selection -->
+                    <MudItem xs="12">
+                        <MudSelect T="Employee"
+                                   @bind-Value="selectedDriver"
+                                   Label="Select Driver (Optional)"
+                                   Variant="Variant.Outlined"
+                                   ToStringFunc="@(driver => driver != null ? $"{driver.FullName} ({driver.JobTitle})" : "")"
+                                   SearchFunc="@SearchDrivers"
+                                   Clearable="true">
+                            <ChildContent>
+                                @foreach (var driver in availableDrivers)
+                                {
+                                    <MudSelectItem Value="@driver">
+                                        <div style="padding: 8px;">
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                                                @driver.FullName
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Style="color: #666;">
+                                                @driver.JobTitle • @driver.DepartmentCode
+                                            </MudText>
+                                        </div>
+                                    </MudSelectItem>
+                                }
+                            </ChildContent>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Total Passengers Calculation -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-2" Elevation="0" Style="background-color: #f5f5f5; border-radius: 4px;">
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Total Passengers:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@CalculateTotalPassengers()</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    @if (selectedVehicle != null && CalculateTotalPassengers() > selectedVehicle.Capacity)
+                                    {
+                                        <MudAlert Severity="Severity.Warning" Dense="true">
+                                            Passengers exceed vehicle capacity!
+                                        </MudAlert>
+                                    }
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Request Summary -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-3"
+                                  Elevation="0"
+                                  Style="background-color: #f5f5f5; border-left: 4px solid #D4A853;">
+                            <MudText Typo="Typo.body2" Style="color: #00286E; margin-bottom: 12px;">
+                                <strong>Request Summary</strong>
+                            </MudText>
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Purpose:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@formModel.Purpose</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Destination:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@formModel.Destination</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Date:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@startDate?.ToString("dd MMM yyyy") - @endDate?.ToString("dd MMM yyyy")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Time:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@startTime?.ToString(@"hh\:mm") - @returnTime?.ToString(@"hh\:mm")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Vehicle:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(selectedVehicle?.Description ?? "Not selected")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Driver:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(selectedDriver?.FullName ?? "Not selected")</strong>
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => SaveRequest())"
+                           Disabled="@(!formValid || saving || !IsRequestValid())">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Saving...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Send" Size="Size.Small" />
+                        <span class="ms-2">@(isEditMode ? "Update Request" : "Submit Request")</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Style="margin-right: 12px; vertical-align: middle;" />
+                            Transport Request
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(currentEmployeeName))
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                @currentEmployeeName (@currentEmployeeNo)
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudButton Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   Style="background-color: #D4A853; color: white; font-weight: 600;"
+                                   Size="Size.Large"
+                                   OnClick="OpenCreateDrawer">
+                            New Request
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Error/Success Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => errorMessage = null"
+                          Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => successMessage = null"
+                          Class="mb-4">
+                    @successMessage
+                </MudAlert>
+            }
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </div>
+            }
+            else
+            {
+                <!-- Summary Cards -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Requests</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.TotalRequests</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.RequestPage" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Pending</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.PendingRequests</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.PendingActions" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Approved</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.ApprovedRequests</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Completed</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.CompletedRequests</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.DoneAll" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Available Vehicles Quick View -->
+                <MudPaper Elevation="2" Class="mb-4 pa-4" Style="border-radius: 12px; border-left: 4px solid #D4A853;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Style="margin-right: 8px;" />
+                            Available Vehicles Today
+                        </MudText>
+                        <MudButton Variant="Variant.Text"
+                                   Style="color: #00286E;"
+                                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                                   OnClick="@(() => Navigation.NavigateTo("/available-vehicles"))">
+                            View All
+                        </MudButton>
+                    </MudStack>
+
+                    @if (availableVehicles.Any())
+                    {
+                        <MudGrid Spacing="3">
+                            @foreach (var vehicle in availableVehicles.Take(4))
+                            {
+                                <MudItem xs="12" sm="6" md="3">
+                                    <MudPaper Elevation="1" Class="pa-3" Style="border-radius: 8px; border-left: 4px solid #4caf50;">
+                                        <MudText Typo="Typo.body2" Style="color: #00286E; font-weight: 600;">
+                                            @vehicle.Description
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Style="color: #666;">
+                                            @vehicle.RegistrationNo • @vehicle.VehicleType • Capacity: @vehicle.Capacity
+                                        </MudText>
+                                        <div class="mt-2">
+                                            <MudChip T="string" Size="Size.Small" Style="background-color: #4caf50; color: white;">
+                                                @vehicle.Status
+                                            </MudChip>
+                                            <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">
+                                                @vehicle.Colour
+                                            </MudChip>
+                                        </div>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Style="color: #666; text-align: center; padding: 20px;">
+                            No available vehicles found for today
+                        </MudText>
+                    }
+                </MudPaper>
+
+                <!-- Requests Table -->
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853; margin-bottom: 20px">
+                    <MudTable Items="@FilteredRequests"
+                              Hover="true"
+                              Breakpoint="Breakpoint.Sm"
+                              Dense="true"
+                              Striped="true"
+                              Style="border-radius: 12px;">
+                        <ToolBarContent>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.RequestPage" Style="color: #00286E;" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">My Transport Requests</MudText>
+                                    <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">@requests.Count requests</MudChip>
+                                </MudStack>
+
+                                <MudStack Row="true" Spacing="2">
+                                    <MudTextField @bind-Value="searchTerm"
+                                                  Placeholder="Search requests..."
+                                                  Adornment="Adornment.Start"
+                                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                                  IconSize="Size.Medium"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  DebounceInterval="300"
+                                                  Style="min-width: 300px;"
+                                                  Class="mt-0">
+                                    </MudTextField>
+
+                                    <MudSelect @bind-Value="statusFilter"
+                                               Placeholder="Status"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Status</MudSelectItem>
+                                        <MudSelectItem Value="@TransportStatus.PENDING">Pending</MudSelectItem>
+                                        <MudSelectItem Value="@TransportStatus.APPROVED">Approved</MudSelectItem>
+                                        <MudSelectItem Value="@TransportStatus.REJECTED">Rejected</MudSelectItem>
+                                        <MudSelectItem Value="@TransportStatus.COMPLETED">Completed</MudSelectItem>
+                                        <MudSelectItem Value="@TransportStatus.IN_PROGRESS">In Progress</MudSelectItem>
+                                        <MudSelectItem Value="@TransportStatus.CANCELLED">Cancelled</MudSelectItem>
+                                    </MudSelect>
+
+                                    <MudTooltip Text="Clear Filters">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                                       Style="color: #666; border: 1px solid #666;"
+                                                       OnClick="ClearFilters" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Refresh">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                                       Style="color: #00286E; border: 1px solid #00286E;"
+                                                       OnClick="RefreshList" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudStack>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>Request No.</MudTh>
+                            <MudTh>Purpose</MudTh>
+                            <MudTh>Destination</MudTh>
+                            <MudTh>Date & Time</MudTh>
+                            <MudTh>Vehicle</MudTh>
+                            <MudTh>Passengers</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh Style="text-align: center;">Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Request No.">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">@context.RequestNo</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Purpose">
+                                <MudText Typo="Typo.body2" Style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    @context.Purpose
+                                </MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Destination">
+                                <MudText Typo="Typo.body2" Style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    @context.Destination
+                                </MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Date & Time">
+                                <MudText Typo="Typo.body2">@FormatDate(context.StartDate) - @FormatDate(context.EndDate)</MudText>
+                                <MudText Typo="Typo.caption">@context.StartTime - @context.ReturnTime</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Vehicle">
+                                @if (!string.IsNullOrEmpty(context.VehicleDescription))
+                                {
+                                    <MudText Typo="Typo.body2">@context.VehicleDescription</MudText>
+                                    <MudText Typo="Typo.caption">@context.VehicleAllocated</MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Style="color: #999;">Not allocated</MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Passengers">
+                                <MudText Typo="Typo.body2">@context.NoOfEmployees + @context.NoOfNonEmployees = @CalculateTotalPassengers(context)</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                @GetStatusChip(context.Status)
+                            </MudTd>
+                            <MudTd DataLabel="Actions" Style="text-align: center;">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Style="color: #00286E;"
+                                                       OnClick="() => ViewDetails(context)" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Manage Travelling Employees">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Groups"
+                                                       Size="Size.Small"
+                                                       Style="color: #2196f3;"
+                                                       OnClick="() => ManageTravellingEmployees(context)" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="@(context.Status == TransportStatus.PENDING ? "Edit Request" : "Cannot edit - request is not pending")">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Size="Size.Small"
+                                                       Style="@(context.Status == TransportStatus.PENDING ? "color: #D4A853;" : "color: #ccc;")"
+                                                       OnClick="() => OpenEditDrawer(context)"
+                                                       Disabled="@(context.Status != TransportStatus.PENDING)" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="@(context.Status == TransportStatus.PENDING || context.Status == TransportStatus.APPROVED ? "Cancel Request" : "Cannot cancel")">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                                                       Size="Size.Small"
+                                                       Style="@(context.Status == TransportStatus.PENDING || context.Status == TransportStatus.APPROVED ? "color: #f44336;" : "color: #ccc;")"
+                                                       OnClick="() => CancelRequest(context)"
+                                                       Disabled="@(!(context.Status == TransportStatus.PENDING || context.Status == TransportStatus.APPROVED))" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div style="text-align: center; padding: 60px 20px;">
+                                <MudIcon Icon="@Icons.Material.Filled.DirectionsCar" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No transport requests found</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria or create a new request</MudText>
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private List<Models.TransportRequest> requests = new();
+    private List<Models.FleetVehicle> availableVehicles = new();
+    private List<Models.Employee> availableDrivers = new();
+    private  Models.TransportRequestSummary summaryData = new();
+    private bool loading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = "";
+    private string? statusFilter = "";
+    private string currentEmployeeNo = "";
+    private string currentEmployeeName = "";
+
+    // Drawer variables
+    private bool drawerOpen = false;
+    private bool isEditMode = false;
+    private bool saving = false;
+    private MudForm form;
+    private bool formValid;
+    private Models.TransportRequestCreate formModel = new();
+    private Models.FleetVehicle? selectedVehicle;
+    private Models.Employee? selectedDriver;
+    private DateTime? startDate = DateTime.Now;
+    private DateTime? endDate = DateTime.Now;
+    private TimeSpan? startTime = TimeSpan.FromHours(9);
+    private TimeSpan? returnTime = TimeSpan.FromHours(17);
+
+    // Store the request being edited
+    private Models.TransportRequest editingRequest = null;
+
+    private IEnumerable<Models.TransportRequest> FilteredRequests
+    {
+        get
+        {
+            var filtered = requests.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                filtered = filtered.Where(t =>
+                    (t.RequestNo?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (t.Purpose?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (t.Destination?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (t.VehicleDescription?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                filtered = filtered.Where(t => t.Status == statusFilter);
+            }
+
+            return filtered.OrderByDescending(t => t.StartDate).ThenByDescending(t => t.StartTime);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("🔍 TransportRequest page initialized");
+
+        try
+        {
+            currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+            currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+
+            Console.WriteLine($"🔍 Current User - Name: {currentEmployeeName}, EmployeeNo: {currentEmployeeNo}");
+
+            if (string.IsNullOrEmpty(currentEmployeeNo))
+            {
+                errorMessage = "Employee number not found. Please log in again.";
+                loading = false;
+                StateHasChanged();
+                return;
+            }
+
+            await LoadAvailableVehicles();
+            await LoadAvailableDrivers();
+            await LoadRequests();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error in OnInitializedAsync: {ex}");
+            errorMessage = $"Error initializing page: {ex.Message}";
+            loading = false;
+        }
+    }
+
+    private async Task LoadAvailableVehicles()
+    {
+        try
+        {
+            availableVehicles = await TransportService.GetAvailableVehiclesAsync();
+            Console.WriteLine($"🔍 Loaded {availableVehicles.Count} available vehicles");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading available vehicles: {ex.Message}");
+            availableVehicles = new List<FleetVehicle>();
+        }
+    }
+
+    private async Task LoadAvailableDrivers()
+    {
+        try
+        {
+            availableDrivers = await TransportService.GetDriversAsync();
+            Console.WriteLine($"🔍 Loaded {availableDrivers.Count} available drivers");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading available drivers: {ex.Message}");
+            availableDrivers = new List<Employee>();
+        }
+    }
+
+    private async Task LoadRequests()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            Console.WriteLine($"🔍 Loading transport requests for employee: {currentEmployeeNo}");
+
+            requests = await TransportService.GetRequestsByEmployeeAsync(currentEmployeeNo);
+            summaryData = await TransportService.GetRequestSummaryAsync(currentEmployeeNo);
+
+            Console.WriteLine($"🔍 Loaded {requests.Count} requests");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load requests: {ex.Message}";
+            Console.WriteLine($"❌ Error loading requests: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<IEnumerable<FleetVehicle>> SearchVehicles(string value)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return availableVehicles;
+
+            return availableVehicles.Where(v =>
+                v.Description.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                v.RegistrationNo.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                v.VehicleType.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return availableVehicles;
+        }
+    }
+
+    private async Task<IEnumerable<Employee>> SearchDrivers(string value)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return availableDrivers;
+
+            return availableDrivers.Where(d =>
+                d.FullName.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                d.No.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+                d.JobTitle.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return availableDrivers;
+        }
+    }
+
+    private void OpenCreateDrawer()
+    {
+        isEditMode = false;
+        editingRequest = null;
+        formModel = new TransportRequestCreate
+        {
+            EmployeeNo = currentEmployeeNo,
+            EmployeeName = currentEmployeeName,
+            NoOfEmployees = 1,
+            NoOfNonEmployees = 0,
+            NumberOfPassengers = 1,
+            StartDate = DateTime.Now.ToString("yyyy-MM-dd"),
+            EndDate = DateTime.Now.ToString("yyyy-MM-dd")
+        };
+        selectedVehicle = null;
+        selectedDriver = null;
+        startDate = DateTime.Now;
+        endDate = DateTime.Now;
+        startTime = TimeSpan.FromHours(9);
+        returnTime = TimeSpan.FromHours(17);
+
+        formValid = false;
+        drawerOpen = true;
+        StateHasChanged();
+    }
+
+    private async void OpenEditDrawer(Models.TransportRequest request)
+    {
+        if (request.Status != TransportStatus.PENDING)
+        {
+            Snackbar.Add("Cannot edit request that is not in Pending status", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            // Fetch the latest version with all fields
+            var currentRequest = await TransportService.GetRequestAsync(request.RequestNo);
+
+            if (currentRequest == null)
+            {
+                Snackbar.Add("Could not load request details", Severity.Error);
+                return;
+            }
+
+            isEditMode = true;
+            editingRequest = currentRequest;
+
+            // Find the vehicle if allocated
+            if (!string.IsNullOrEmpty(currentRequest.VehicleAllocated))
+            {
+                selectedVehicle = availableVehicles.FirstOrDefault(v => v.No == currentRequest.VehicleAllocated);
+            }
+
+            // Find the driver if assigned
+            if (!string.IsNullOrEmpty(currentRequest.DriverNo))
+            {
+                selectedDriver = availableDrivers.FirstOrDefault(d => d.No == currentRequest.DriverNo);
+            }
+
+            // Parse dates
+            if (DateTime.TryParse(currentRequest.StartDate, out var start))
+                startDate = start;
+
+            if (DateTime.TryParse(currentRequest.EndDate, out var end))
+                endDate = end;
+
+            // Parse times
+            if (TimeSpan.TryParse(currentRequest.StartTime, out var departure))
+                startTime = departure;
+
+            if (TimeSpan.TryParse(currentRequest.ReturnTime, out var ret))
+                returnTime = ret;
+
+            formModel = new TransportRequestCreate
+            {
+                EmployeeNo = currentRequest.EmployeeNo,
+                EmployeeName = currentRequest.EmployeeName,
+                Purpose = currentRequest.Purpose,
+                Destination = currentRequest.Destination,
+                StartDate = currentRequest.StartDate,
+                EndDate = currentRequest.EndDate,
+                StartTime = currentRequest.StartTime,
+                ReturnTime = currentRequest.ReturnTime,
+                NoOfEmployees = currentRequest.NoOfEmployees,
+                NoOfNonEmployees = currentRequest.NoOfNonEmployees,
+                VehicleAllocated = currentRequest.VehicleAllocated,
+                VehicleDescription = currentRequest.VehicleDescription,
+                DriverNo = currentRequest.DriverNo,
+                DriverName = currentRequest.DriverName,
+                NumberOfPassengers = currentRequest.NumberOfPassengers
+            };
+
+            drawerOpen = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading request for edit: {ex.Message}");
+            Snackbar.Add("Failed to load request for editing", Severity.Error);
+        }
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+        formModel = new Models.TransportRequestCreate();
+        editingRequest = null;
+        selectedVehicle = null;
+        selectedDriver = null;
+    }
+
+    private bool IsRequestValid()
+    {
+        if (string.IsNullOrWhiteSpace(formModel.Purpose)) return false;
+        if (string.IsNullOrWhiteSpace(formModel.Destination)) return false;
+        if (startDate == null || endDate == null) return false;
+        if (endDate < startDate) return false;
+        if (startTime == null || returnTime == null) return false;
+        if (returnTime <= startTime) return false;
+        if (formModel.NoOfEmployees < 1) return false;
+        if (formModel.NoOfNonEmployees < 0) return false;
+        if (startDate < DateTime.Now.Date) return false;
+
+        // Check vehicle capacity if vehicle is selected
+        if (selectedVehicle != null && CalculateTotalPassengers() > selectedVehicle.Capacity)
+            return false;
+
+        return true;
+    }
+
+    private decimal CalculateTotalPassengers()
+    {
+        return formModel.NoOfEmployees + formModel.NoOfNonEmployees;
+    }
+
+    private decimal CalculateTotalPassengers(Models.TransportRequest request)
+    {
+        return request.NoOfEmployees + request.NoOfNonEmployees;
+    }
+
+    private async Task SaveRequest()
+    {
+        try
+        {
+            await form.Validate();
+
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            if (!IsRequestValid())
+            {
+                Snackbar.Add("Please check your request details", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            // Check vehicle availability if vehicle is selected
+            if (selectedVehicle != null)
+            {
+                var isAvailable = await TransportService.CheckVehicleAvailabilityAsync(
+                    selectedVehicle.No,
+                    startDate.Value.ToString("yyyy-MM-dd"),
+                    startTime.Value.ToString(@"hh\:mm"),
+                    returnTime.Value.ToString(@"hh\:mm"));
+
+                if (!isAvailable)
+                {
+                    Snackbar.Add("Vehicle is not available for the selected time slot", Severity.Error);
+                    saving = false;
+                    return;
+                }
+            }
+
+            // Prepare the request
+            formModel.StartDate = startDate.Value.ToString("yyyy-MM-dd");
+            formModel.EndDate = endDate.Value.ToString("yyyy-MM-dd");
+            formModel.StartTime = startTime.Value.ToString(@"hh\:mm");
+            formModel.ReturnTime = returnTime.Value.ToString(@"hh\:mm");
+            formModel.EmployeeNo = currentEmployeeNo;
+            formModel.EmployeeName = currentEmployeeName;
+            formModel.NumberOfPassengers = CalculateTotalPassengers();
+
+            if (selectedVehicle != null)
+            {
+                formModel.VehicleAllocated = selectedVehicle.No;
+                formModel.VehicleDescription = selectedVehicle.DisplayInfo;
+            }
+
+            if (selectedDriver != null)
+            {
+                formModel.DriverNo = selectedDriver.No;
+                formModel.DriverName = selectedDriver.FullName;
+            }
+
+            Console.WriteLine($"📤 {(isEditMode ? "Updating" : "Creating")} transport request:");
+            Console.WriteLine($"   Purpose: {formModel.Purpose}");
+            Console.WriteLine($"   Destination: {formModel.Destination}");
+            Console.WriteLine($"   Date: {formModel.StartDate} - {formModel.EndDate}");
+            Console.WriteLine($"   Time: {formModel.StartTime} - {formModel.ReturnTime}");
+            Console.WriteLine($"   Passengers: {formModel.NumberOfPassengers}");
+
+            string result;
+            if (isEditMode && editingRequest != null)
+            {
+                // Update the existing request with new values
+                editingRequest.Purpose = formModel.Purpose;
+                editingRequest.Destination = formModel.Destination;
+                editingRequest.StartDate = formModel.StartDate;
+                editingRequest.EndDate = formModel.EndDate;
+                editingRequest.StartTime = formModel.StartTime;
+                editingRequest.ReturnTime = formModel.ReturnTime;
+                editingRequest.NoOfEmployees = formModel.NoOfEmployees;
+                editingRequest.NoOfNonEmployees = formModel.NoOfNonEmployees;
+                editingRequest.VehicleAllocated = formModel.VehicleAllocated;
+                editingRequest.VehicleDescription = formModel.VehicleDescription;
+                editingRequest.DriverNo = formModel.DriverNo;
+                editingRequest.DriverName = formModel.DriverName;
+                editingRequest.NumberOfPassengers = formModel.NumberOfPassengers;
+
+                Console.WriteLine($"🔄 Updating request {editingRequest.RequestNo} with ETag: {editingRequest.ODataEtag}");
+
+                result = await TransportService.UpdateRequestAsync(editingRequest);
+            }
+            else
+            {
+                // For create mode, call the Create method
+                result = await TransportService.CreateRequestAsync(formModel);
+            }
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add(isEditMode ? "Request updated successfully!" : "Request created successfully!", Severity.Success);
+                successMessage = result;
+                CloseDrawer();
+                await LoadAvailableVehicles();
+                await LoadRequests();
+            }
+            else
+            {
+                Snackbar.Add(result, Severity.Error, config => { config.VisibleStateDuration = 8000; });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in SaveRequest: {ex}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CancelRequest(Models.TransportRequest request)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Cancel Request",
+            $"Are you sure you want to cancel request '{request.RequestNo}'?",
+            yesText: "Cancel Request",
+            cancelText: "Keep Request",
+            options: new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                CloseButton = true
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var result = await TransportService.CancelRequestAsync(request.RequestNo, "Cancelled by user");
+
+                if (result.StartsWith("Success"))
+                {
+                    Snackbar.Add($"Request {request.RequestNo} cancelled successfully", Severity.Success);
+                    await LoadAvailableVehicles();
+                    await LoadRequests();
+                }
+                else
+                {
+                    Snackbar.Add(result, Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to cancel: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task RefreshList()
+    {
+        await LoadAvailableVehicles();
+        await LoadRequests();
+        Snackbar.Add("List refreshed successfully", Severity.Success);
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        statusFilter = "";
+    }
+
+    private void ViewDetails(Models.TransportRequest request)
+    {
+        var parameters = new DialogParameters { ["Request"] = request };
+        DialogService.Show<TransportRequestDetails>("Request Details", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+    }
+
+    private void ManageTravellingEmployees(Models.TransportRequest request)
+    {
+        Navigation.NavigateTo($"/request/{request.RequestNo}/travelling-employees");
+    }
+
+    private string FormatDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString))
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "Pending") switch
+        {
+            "Pending Approval" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.PendingActions),
+            "Approved" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Rejected" => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel),
+            "Completed" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.DoneAll),
+            "Cancelled" => ("background-color: #666; color: white;", Icons.Material.Filled.DoNotDisturb),
+            "In Progress" => ("background-color: #D4A853; color: white;", Icons.Material.Filled.AccessTime),
+            "Vehicle Allocated" => ("background-color: #9c27b0; color: white;", Icons.Material.Filled.DirectionsCar),
+            "Driver Assigned" => ("background-color: #009688; color: white;", Icons.Material.Filled.Person),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

@@ -1,0 +1,844 @@
+@page "/leave-planning"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject ILeavePlanService LeavePlanService
+@inject ICurrentUserService CurrentUserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Leave Plan Management</PageTitle>
+
+<MudLayout>
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="600px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                @(isEditMode ? "Edit Leave Plan" : "New Leave Plan")
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@formValid">
+                <MudGrid Spacing="3">
+                    @if (isEditMode && editingPlan != null)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingPlan.ApplicationNo"
+                                          Label="Plan Number"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="editingPlan.EmployeeName"
+                                          Label="Employee Name"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="editingPlan.DepartmentCode"
+                                          Label="Department"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+
+                    <!-- Leave Type Selection -->
+                    <MudItem xs="12">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.LeaveCode"
+                                   Label="Leave Type *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            <MudSelectItem Value="@("ANNUAL")">Annual Leave</MudSelectItem>
+                            <MudSelectItem Value="@("SICK")">Sick Leave</MudSelectItem>
+                            <MudSelectItem Value="@("MATERNITY")">Maternity Leave</MudSelectItem>
+                            <MudSelectItem Value="@("PATERNITY")">Paternity Leave</MudSelectItem>
+                            <MudSelectItem Value="@("COMPASSIONATE")">Compassionate Leave</MudSelectItem>
+                            <MudSelectItem Value="@("STUDY")">Study Leave</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Fiscal Start Date -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="fiscalStartDate"
+                                       Label="Fiscal Start Date *"
+                                       Variant="Variant.Outlined"
+                                       Required="true" />
+                    </MudItem>
+
+                    <!-- Maturity Date -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="maturityDate"
+                                       Label="Maturity Date *"
+                                       Variant="Variant.Outlined"
+                                       Required="true" />
+                    </MudItem>
+
+                    <!-- Leave Entitlement -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.LeaveEntitlement"
+                                      Label="Leave Entitlement (Days) *"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number"
+                                      Min="1"
+                                      Required="true" />
+                    </MudItem>
+
+                    <!-- Days in Plan -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.DaysInPlan"
+                                      Label="Days in Plan *"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Number"
+                                      Min="1"
+                                      Required="true" />
+                    </MudItem>
+
+                    @if (isEditMode && editingPlan != null)
+                    {
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="editingPlan.LeaveBalance"
+                                          Label="Current Balance"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined"
+                                          InputType="InputType.Number" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="editingPlan.Status"
+                                          Label="Status"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+
+                    <!-- Plan Summary -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-3"
+                                  Elevation="0"
+                                  Style="background-color: #f5f5f5; border-left: 4px solid #D4A853;">
+                            <MudText Typo="Typo.body2" Style="color: #00286E; margin-bottom: 12px;">
+                                <strong>Plan Summary</strong>
+                            </MudText>
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Leave Type:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(string.IsNullOrEmpty(formModel.LeaveCode) ? "Not selected" : formModel.LeaveCode)</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Entitlement:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(formModel.LeaveEntitlement > 0 ? $"{formModel.LeaveEntitlement} days" : "Not set")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Days in Plan:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(formModel.DaysInPlan > 0 ? $"{formModel.DaysInPlan} days" : "Not set")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Period:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(fiscalStartDate != null && maturityDate != null ? $"{fiscalStartDate?.ToString("MMM yyyy")} - {maturityDate?.ToString("MMM yyyy")}" : "Not selected")</strong>
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => SaveLeavePlan())"
+                           Disabled="@(!formValid || saving)">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Saving...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Save" Size="Size.Small" />
+                        <span class="ms-2">@(isEditMode ? "Update" : "Submit")</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.DateRange" Style="margin-right: 12px; vertical-align: middle;" />
+                            Leave Plan Management
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(currentEmployeeName))
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                @currentEmployeeName (@currentEmployeeNo)
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudButton Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   Style="background-color: #D4A853; color: white; font-weight: 600;"
+                                   Size="Size.Large"
+                                   OnClick="OpenCreateDrawer">
+                            New Leave Plan
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Error/Success Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => errorMessage = null"
+                          Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => successMessage = null"
+                          Class="mb-4">
+                    @successMessage
+                </MudAlert>
+            }
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </div>
+            }
+            else
+            {
+                <!-- Summary Cards -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Plans</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@leavePlans.Count</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.ListAlt" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Total Entitlement</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.TotalEntitlement</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Balance</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.TotalBalance</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Active Plans</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summaryData.ActivePlans</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckBox" Size="Size.Large" Style="color: #00286E;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Leave Plans Table -->
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853; margin-bottom: 20px">
+                    <MudTable Items="@FilteredLeavePlans"
+                              Hover="true"
+                              Breakpoint="Breakpoint.Sm"
+                              Dense="true"
+                              Striped="true"
+                              Style="border-radius: 12px;">
+                        <ToolBarContent>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.FilterList" Style="color: #00286E;" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">Leave Plans</MudText>
+                                    <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">@leavePlans.Count plans</MudChip>
+                                </MudStack>
+
+                                <MudStack Row="true" Spacing="2">
+                                    <MudTextField @bind-Value="searchTerm"
+                                                  Placeholder="Search plans..."
+                                                  Adornment="Adornment.Start"
+                                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                                  IconSize="Size.Medium"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  DebounceInterval="300"
+                                                  Style="min-width: 300px;"
+                                                  Class="mt-0">
+                                    </MudTextField>
+
+                                    <MudSelect @bind-Value="statusFilter"
+                                               Placeholder="Status"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Status</MudSelectItem>
+                                        <MudSelectItem Value="@("Active")">Active</MudSelectItem>
+                                        <MudSelectItem Value="@("Inactive")">Inactive</MudSelectItem>
+                                    </MudSelect>
+
+                                    <MudTooltip Text="Clear Filters">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                                       Style="color: #666; border: 1px solid #666;"
+                                                       OnClick="ClearFilters" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Refresh">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                                       Style="color: #00286E; border: 1px solid #00286E;"
+                                                       OnClick="RefreshList" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudStack>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>Plan No.</MudTh>
+                            <MudTh>Leave Type</MudTh>
+                            <MudTh>Fiscal Period</MudTh>
+                            <MudTh>Entitlement</MudTh>
+                            <MudTh>Earned</MudTh>
+                            <MudTh>Balance</MudTh>
+                            <MudTh>Days in Plan</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh Style="text-align: center;">Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Plan No.">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">#@context.ApplicationNo</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Leave Type">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #D4A853; color: white;">@context.LeaveCode</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Fiscal Period">
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.caption">
+                                        <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Style="color: #D4A853;" />
+                                        @ParseDate(context.FiscalStartDate)
+                                    </MudText>
+                                    <MudText Typo="Typo.caption">
+                                        <MudIcon Icon="@Icons.Material.Filled.EventAvailable" Size="Size.Small" Style="color: #D4A853;" />
+                                        @ParseDate(context.MaturityDate)
+                                    </MudText>
+                                </MudStack>
+                            </MudTd>
+                            <MudTd DataLabel="Entitlement">
+                                <MudText Typo="Typo.body2">@context.LeaveEntitlement</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Earned">
+                                <MudText Typo="Typo.body2">@context.LeaveEarnedToDate</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Balance">
+                                <MudText Typo="Typo.body2" Style="@GetBalanceStyle(context.LeaveBalance)">
+                                    <strong>@context.LeaveBalance</strong>
+                                </MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Days in Plan">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">@context.DaysInPlan</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                @GetStatusChip(context.Status)
+                            </MudTd>
+                            <MudTd DataLabel="Actions" Style="text-align: center;">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Style="color: #00286E;"
+                                                       OnClick="@(() => ViewDetails(context))" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Edit Plan">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Size="Size.Small"
+                                                       Style="color: #D4A853;"
+                                                       OnClick="@(() => OpenEditDrawer(context))" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Delete Plan">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Style="color: #f44336;"
+                                                       OnClick="@(() => DeletePlan(context))" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div style="text-align: center; padding: 60px 20px;">
+                                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No leave plans found</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria or create a new plan</MudText>
+                            </div>
+                        </NoRecordsContent>
+                    </MudTable>
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private List<LeavePlan> leavePlans = new();
+    private LeavePlanSummary summaryData = new();
+    private bool loading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = "";
+    private string? statusFilter = "";
+    private string currentEmployeeNo = "";
+    private string currentEmployeeName = "";
+
+    // Drawer variables
+    private bool drawerOpen = false;
+    private bool isEditMode = false;
+    private bool saving = false;
+    private MudForm form;
+    private bool formValid;
+    private LeavePlanCreate formModel = new();
+    private DateTime? fiscalStartDate;
+    private DateTime? maturityDate;
+
+    // Store the plan being edited
+    private LeavePlan editingPlan = null;
+
+    private IEnumerable<LeavePlan> FilteredLeavePlans
+    {
+        get
+        {
+            var filtered = leavePlans.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                filtered = filtered.Where(p =>
+                    (p.ApplicationNo?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (p.LeaveCode?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusFilter))
+            {
+                filtered = filtered.Where(p => p.Status == statusFilter);
+            }
+
+            return filtered.OrderByDescending(p => p.ApplicationDate);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("🔍 LeavePlan page initialized");
+
+        try
+        {
+            currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+            currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+
+            Console.WriteLine($"🔍 Current User - Name: {currentEmployeeName}, EmployeeNo: {currentEmployeeNo}");
+
+            if (string.IsNullOrEmpty(currentEmployeeNo))
+            {
+                errorMessage = "Employee number not found. Please log in again.";
+                loading = false;
+                StateHasChanged();
+                return;
+            }
+
+            await LoadLeavePlans();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error in OnInitializedAsync: {ex}");
+            errorMessage = $"Error initializing page: {ex.Message}";
+            loading = false;
+        }
+    }
+
+    private async Task LoadLeavePlans()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            Console.WriteLine($"🔍 Loading leave plans for employee: {currentEmployeeNo}");
+
+            leavePlans = await LeavePlanService.GetLeavePlansByEmployeeAsync(currentEmployeeNo);
+            summaryData = await LeavePlanService.GetLeavePlanSummaryAsync(currentEmployeeNo);
+
+            Console.WriteLine($"🔍 Loaded {leavePlans.Count} leave plans");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load leave plans: {ex.Message}";
+            Console.WriteLine($"❌ Error loading leave plans: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OpenCreateDrawer()
+    {
+        isEditMode = false;
+        editingPlan = null;
+        formModel = new LeavePlanCreate
+        {
+            EmployeeNo = currentEmployeeNo,
+            LeaveCode = "ANNUAL", // Default leave type
+            LeaveEntitlement = 21,
+            DaysInPlan = 21
+        };
+        fiscalStartDate = DateTime.Today;
+        maturityDate = DateTime.Today.AddYears(1);
+
+        formValid = false;
+        drawerOpen = true;
+        StateHasChanged();
+    }
+
+    private async void OpenEditDrawer(LeavePlan plan)
+    {
+        try
+        {
+            // Fetch the latest version with all fields
+            var currentPlan = await LeavePlanService.GetLeavePlanAsync(plan.ApplicationNo);
+
+            if (currentPlan == null)
+            {
+                Snackbar.Add("Could not load plan details", Severity.Error);
+                return;
+            }
+
+            isEditMode = true;
+            editingPlan = currentPlan;
+
+            formModel = new LeavePlanCreate
+            {
+                EmployeeNo = currentPlan.EmployeeNo,
+                LeaveCode = currentPlan.LeaveCode,
+                DaysInPlan = currentPlan.DaysInPlan,
+                LeaveEntitlement = currentPlan.LeaveEntitlement,
+                FiscalStartDate = currentPlan.FiscalStartDate,
+                MaturityDate = currentPlan.MaturityDate
+            };
+
+            if (DateTime.TryParse(currentPlan.FiscalStartDate, out var fiscal))
+            {
+                fiscalStartDate = fiscal;
+            }
+            else
+            {
+                fiscalStartDate = DateTime.Today;
+            }
+
+            if (DateTime.TryParse(currentPlan.MaturityDate, out var maturity))
+            {
+                maturityDate = maturity;
+            }
+            else
+            {
+                maturityDate = DateTime.Today.AddYears(1);
+            }
+
+            drawerOpen = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading plan for edit: {ex.Message}");
+            Snackbar.Add("Failed to load plan for editing", Severity.Error);
+        }
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+        formModel = new LeavePlanCreate();
+        fiscalStartDate = null;
+        maturityDate = null;
+        editingPlan = null;
+    }
+    private async Task SaveLeavePlan()
+    {
+        try
+        {
+            await form.Validate();
+
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            // Validation
+            if (!fiscalStartDate.HasValue)
+            {
+                Snackbar.Add("Please select a fiscal start date", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (!maturityDate.HasValue)
+            {
+                Snackbar.Add("Please select a maturity date", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (maturityDate <= fiscalStartDate)
+            {
+                Snackbar.Add("Maturity date must be after fiscal start date", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.LeaveCode))
+            {
+                Snackbar.Add("Please select a leave type", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (formModel.LeaveEntitlement <= 0)
+            {
+                Snackbar.Add("Leave entitlement must be greater than 0", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (formModel.DaysInPlan <= 0)
+            {
+                Snackbar.Add("Days in plan must be greater than 0", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            // Prepare the plan
+            formModel.EmployeeNo = currentEmployeeNo;
+            formModel.FiscalStartDate = fiscalStartDate.Value.ToString("yyyy-MM-dd");
+            formModel.MaturityDate = maturityDate.Value.ToString("yyyy-MM-dd");
+
+            Console.WriteLine($"📤 {(isEditMode ? "Updating" : "Creating")} leave plan:");
+            Console.WriteLine($"   Employee: {formModel.EmployeeNo}");
+            Console.WriteLine($"   Leave Type: {formModel.LeaveCode}");
+            Console.WriteLine($"   Entitlement: {formModel.LeaveEntitlement}");
+            Console.WriteLine($"   Days in Plan: {formModel.DaysInPlan}");
+            Console.WriteLine($"   Fiscal Start: {formModel.FiscalStartDate}");
+            Console.WriteLine($"   Maturity: {formModel.MaturityDate}");
+
+            bool success;
+            string message;
+
+            if (isEditMode && editingPlan != null)
+            {
+                // For UPDATE: Create a LeavePlanUpdate model
+                var updateModel = new LeavePlanUpdate
+                {
+                    ApplicationNo = editingPlan.ApplicationNo,
+                    LeaveCode = formModel.LeaveCode,
+                    DaysInPlan = formModel.DaysInPlan,
+                    LeaveEntitlement = formModel.LeaveEntitlement,
+                    FiscalStartDate = formModel.FiscalStartDate,
+                    MaturityDate = formModel.MaturityDate
+                };
+
+                Console.WriteLine($"🔄 Updating plan {updateModel.ApplicationNo} with ETag: {editingPlan.ODataEtag}");
+
+                // Call Update method with update model and etag
+                var updateResult = await LeavePlanService.UpdateLeavePlanAsync(updateModel, editingPlan.ODataEtag);
+                success = updateResult.Success;
+                message = updateResult.Message;
+            }
+            else
+            {
+                // For CREATE: Add ApplicationDate to the create model
+                var createModel = new LeavePlanCreate
+                {
+                    EmployeeNo = formModel.EmployeeNo,
+                    LeaveCode = formModel.LeaveCode,
+                    DaysInPlan = formModel.DaysInPlan,
+                    FiscalStartDate = formModel.FiscalStartDate,
+                    LeaveEntitlement = formModel.LeaveEntitlement,
+                    MaturityDate = formModel.MaturityDate,
+                };
+
+                var createResult = await LeavePlanService.CreateLeavePlanAsync(createModel);
+                success = createResult.Success;
+                message = createResult.Message;
+            }
+
+            if (success)
+            {
+                Snackbar.Add(isEditMode ? "Leave plan updated successfully!" : "Leave plan created successfully!", Severity.Success);
+                successMessage = message;
+                CloseDrawer();
+                await LoadLeavePlans();
+            }
+            else
+            {
+                // Show the actual error message
+                Snackbar.Add(message, Severity.Error, config => { config.VisibleStateDuration = 8000; });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in SaveLeavePlan: {ex}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshList()
+    {
+        await LoadLeavePlans();
+        Snackbar.Add("List refreshed successfully", Severity.Success);
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = "";
+        statusFilter = "";
+    }
+
+    private void ViewDetails(LeavePlan plan)
+    {
+        var parameters = new DialogParameters { ["LeavePlan"] = plan };
+        DialogService.Show<LeavePlanDetails>("Leave Plan Details", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+    }
+
+    private async Task DeletePlan(LeavePlan plan)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Leave Plan",
+            $"Are you sure you want to delete plan '{plan.ApplicationNo}'? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel",
+            options: new DialogOptions { MaxWidth = MaxWidth.Small, CloseButton = true });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var deleted = await LeavePlanService.DeleteLeavePlanAsync(plan.ApplicationNo, plan.ODataEtag);
+
+                if (deleted)
+                {
+                    Snackbar.Add($"Plan {plan.ApplicationNo} deleted successfully", Severity.Success);
+                    await LoadLeavePlans();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete plan", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to delete: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private string GetBalanceStyle(int balance)
+    {
+        return balance > 10 ? "color: #4caf50;" :
+               balance > 5 ? "color: #D4A853;" :
+               "color: #f44336;";
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "Unknown") switch
+        {
+            "Active" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Inactive" => ("background-color: #999; color: white;", Icons.Material.Filled.Circle),
+            _ => ("background-color: #666; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

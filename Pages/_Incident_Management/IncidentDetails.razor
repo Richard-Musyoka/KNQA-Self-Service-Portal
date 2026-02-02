@@ -1,0 +1,194 @@
+﻿@* IncidentDetails.razor *@
+@using MudBlazor
+@using KNQASelfService.Models
+
+<MudDialog>
+    <DialogContent>
+        @if (Incident != null)
+        {
+            <MudGrid Spacing="2">
+                <!-- Header Section -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 8px;">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                <MudIcon Icon="@GetIncidentTypeIcon(Incident.IncidentType)"
+                                         Size="Size.Large"
+                                         Style="color:#D4A853;" />
+                                <div>
+                                    <MudText Typo="Typo.h5" Style="color:white;font-weight:600;">
+                                        Incident Details
+                                    </MudText>
+                                    <MudText Typo="Typo.body2" Style="color:rgba(255,255,255,0.8);">
+                                        Reference #@(Incident.IncidentReference ?? "N/A")
+                                    </MudText>
+                                </div>
+                            </MudStack>
+
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudChip T="string"
+                                         Color="@GetStatusColor(Incident.IncidentStatus)"
+                                         Size="Size.Small"
+                                         Style="font-weight:600;color:white;">
+                                    @(Incident.IncidentStatus ?? "Unknown")
+                                </MudChip>
+                            </MudStack>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Basic Information -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #00286E;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+                            Basic Information
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Incident Description</MudText>
+                                <MudText Typo="Typo.body1" Style="color:#00286E;">
+                                    @(Incident.IncidentDescription ?? "Not provided")
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Incident Type</MudText>
+                                <MudChip T="string" Style="background:#D4A853;color:white;">
+                                    @(Incident.IncidentType ?? "Not specified")
+                                </MudChip>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Location & Timing -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #D4A853;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Class="mr-2" />
+                            Location & Timing
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Location</MudText>
+                                <MudText>@(Incident.IncidenceLocationName ?? "Not specified")</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Incident Date</MudText>
+                                <MudText>@ParseDate(Incident.IncidentDate)</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Incident Time</MudText>
+                                <MudText>@(Incident.IncidentTime ?? "Not specified")</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Employee Information -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #4caf50;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-2" />
+                            Employee Information
+                        </MudText>
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Employee Name</MudText>
+                                <MudText>@(Incident.EmployeeName ?? "Not specified")</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Employee No.</MudText>
+                                <MudText>@(Incident.EmployeeNo ?? "Not specified")</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Job Title</MudText>
+                                <MudText>@(Incident.JobTitle ?? "Not specified")</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Department</MudText>
+                                <MudText>@(Incident.Department ?? "Not specified")</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+        else
+        {
+            <div style="text-align: center; padding: 60px 20px;">
+                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No incident data available</MudText>
+                <MudText Typo="Typo.body2" Style="color: #999;">Please select a valid incident</MudText>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Variant="Variant.Filled" Style="background-color: #00286E; color: white;">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter]
+    public Models.IncidentManagement? Incident { get; set; }
+
+    private void Close()
+    {
+       
+    }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "Not specified";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private string GetIncidentTypeIcon(string? incidentType)
+    {
+        return (incidentType ?? "").ToLower() switch
+        {
+            var x when x.Contains("security") => Icons.Material.Filled.Security,
+            var x when x.Contains("safety") => Icons.Material.Filled.Warning,
+            var x when x.Contains("it") || x.Contains("technical") => Icons.Material.Filled.Computer,
+            var x when x.Contains("hr") || x.Contains("personnel") => Icons.Material.Filled.Groups,
+            var x when x.Contains("health") => Icons.Material.Filled.MedicalServices,
+            _ => Icons.Material.Filled.Report
+        };
+    }
+
+    private Color GetStatusColor(string? status) => (status ?? "Unknown") switch
+    {
+        "Open" => Color.Warning,
+        "In Progress" => Color.Info,
+        "Under Review" => Color.Info,
+        "Resolved" => Color.Success,
+        "Closed" => Color.Default,
+        _ => Color.Info
+    };
+}

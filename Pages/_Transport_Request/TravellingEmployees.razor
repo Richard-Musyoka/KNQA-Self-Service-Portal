@@ -1,0 +1,681 @@
+﻿@page "/request/{requestNo}/travelling-employees"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject ITransportService TransportService
+@inject ICurrentUserService CurrentUserService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Travelling Employees - @request?.Purpose</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+    <!-- Header Section -->
+    <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+        <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudItem xs="12" md="8">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                                   Style="color: white;"
+                                   OnClick="GoBack" />
+                    <div>
+                        <MudText Typo="Typo.h5" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Groups" Style="margin-right: 8px;" />
+                            Travelling Employees
+                        </MudText>
+                        @if (request != null)
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">
+                                @request.Purpose • @FormatDate(request.StartDate) @request.StartTime - @request.ReturnTime
+                            </MudText>
+                        }
+                    </div>
+                </MudStack>
+            </MudItem>
+            <MudItem xs="12" md="4" Style="text-align: right;">
+                <MudButton Variant="Variant.Filled"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="OpenAddEmployeeDrawer">
+                    Add Employee
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Error/Success Messages -->
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error"
+                  Variant="Variant.Filled"
+                  CloseIcon="@Icons.Material.Filled.Close"
+                  CloseIconClicked="() => errorMessage = null"
+                  Class="mb-4">
+            @errorMessage
+        </MudAlert>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <MudAlert Severity="Severity.Success"
+                  Variant="Variant.Filled"
+                  CloseIcon="@Icons.Material.Filled.Close"
+                  CloseIconClicked="() => successMessage = null"
+                  Class="mb-4">
+            @successMessage
+        </MudAlert>
+    }
+
+    <!-- Loading State -->
+    @if (loading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+            <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+        </div>
+    }
+    else if (request == null)
+    {
+        <div style="text-align: center; padding: 60px 20px;">
+            <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Large" Style="font-size: 4rem; color: #f44336;" />
+            <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">Request not found</MudText>
+            <MudButton Variant="Variant.Text"
+                       Style="color: #00286E; margin-top: 16px;"
+                       OnClick="GoBack">
+                Back to Requests
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <!-- Summary Cards -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <div>
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Employees</MudText>
+                            <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@travellingEmployees.Count</MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Large" Style="color: #D4A853;" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <div>
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Total Days</MudText>
+                            <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">
+                                @travellingEmployees.Sum(e => e.NoOfDays)
+                            </MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Large" Style="color: white;" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <div>
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Request Limit</MudText>
+                            <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">
+                                @request.NoOfEmployees
+                            </MudText>
+                        </div>
+                      
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%); border-left: 4px solid #00286E;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <div>
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Status</MudText>
+                            <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">
+                                @travellingEmployees.Count / @request.NoOfEmployees
+                            </MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: white;" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Travelling Employees Table -->
+        <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853;">
+            <MudTable Items="@travellingEmployees"
+                      Hover="true"
+                      Breakpoint="Breakpoint.Sm"
+                      Dense="true"
+                      Striped="true"
+                      Style="border-radius: 12px;">
+                <ToolBarContent>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Style="color: #00286E;" />
+                            <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">Travelling Employees List</MudText>
+                            <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">
+                                @travellingEmployees.Count employees
+                            </MudChip>
+                        </MudStack>
+
+                        <MudStack Row="true" Spacing="2">
+                            <MudTextField @bind-Value="searchTerm"
+                                          Placeholder="Search employees..."
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Search"
+                                          IconSize="Size.Medium"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          DebounceInterval="300"
+                                          Style="min-width: 300px;"
+                                          Class="mt-0">
+                            </MudTextField>
+
+                            <MudTooltip Text="Refresh">
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                               Style="color: #00286E; border: 1px solid #00286E;"
+                                               OnClick="LoadTravellingEmployees" />
+                            </MudTooltip>
+                        </MudStack>
+                    </MudStack>
+                </ToolBarContent>
+                <HeaderContent>
+                    <MudTh>Employee No.</MudTh>
+                    <MudTh>Employee Name</MudTh>
+                    <MudTh>Scale/Position</MudTh>
+                    <MudTh>Trip Dates</MudTh>
+                    <MudTh>Days</MudTh>
+                    <MudTh Style="text-align: center;">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Employee No.">
+                        <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">
+                            @context.EmployeeNo
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Employee Name">
+                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                            @context.EmployeeName
+                        </MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Scale/Position">
+                        <MudText Typo="Typo.body2">@context.EmployeeScale</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Trip Dates">
+                        <MudText Typo="Typo.body2">@FormatDate(context.StartDate) - @FormatDate(context.EndDate)</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Days">
+                        <MudText Typo="Typo.body2">@context.NoOfDays day(s)</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align: center;">
+                        <MudStack Row="true" Spacing="1">
+                            <MudTooltip Text="View Profile">
+                                <MudIconButton Icon="@Icons.Material.Filled.Person"
+                                               Size="Size.Small"
+                                               Style="color: #00286E;"
+                                               OnClick="() => ViewEmployeeProfile(context.EmployeeNo)" />
+                            </MudTooltip>
+
+                            <MudTooltip Text="Edit Details">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Style="color: #D4A853;"
+                                               OnClick="() => EditEmployeeDetails(context)" />
+                            </MudTooltip>
+
+                            <MudTooltip Text="Remove Employee">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Style="color: #f44336;"
+                                               OnClick="() => RemoveEmployee(context)" />
+                            </MudTooltip>
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                        <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No travelling employees added yet</MudText>
+                        <MudText Typo="Typo.body2" Style="color: #999;">Add employees who will be travelling on this trip</MudText>
+                        <MudButton Variant="Variant.Filled"
+                                   Style="background-color: #D4A853; color: white; margin-top: 16px;"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="OpenAddEmployeeDrawer">
+                            Add First Employee
+                        </MudButton>
+                    </div>
+                </NoRecordsContent>
+            </MudTable>
+        </MudPaper>
+    }
+
+    <!-- Add Employee Drawer -->
+    <MudDrawer @bind-Open="addEmployeeDrawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="500px"
+               Variant="@DrawerVariant.Temporary">
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@Icons.Material.Filled.PersonAdd"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                Add Travelling Employee
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="employeeForm" @bind-IsValid="@employeeFormValid">
+                <MudGrid Spacing="3">
+                    <!-- Employee Search -->
+                    <MudItem xs="12">
+                        <MudSelect T="Employee"
+                                   @bind-Value="selectedEmployee"
+                                   Label="Search Employee *"
+                                   Variant="Variant.Outlined"
+                                   ToStringFunc="@(emp => emp != null ? emp.DisplayName : "")"
+                                   SearchFunc="@SearchEmployees"
+                                   Required="true"
+                                   Clearable="true">
+                            <ChildContent>
+                                @foreach (var emp in searchedEmployees)
+                                {
+                                    <MudSelectItem Value="@emp">
+                                        <div style="padding: 8px;">
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                                                @emp.FullName
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Style="color: #666;">
+                                                @emp.No • @emp.JobTitle • @emp.DepartmentCode
+                                            </MudText>
+                                        </div>
+                                    </MudSelectItem>
+                                }
+                            </ChildContent>
+                        </MudSelect>
+                    </MudItem>
+
+                    @if (selectedEmployee != null)
+                    {
+                        <MudItem xs="12">
+                            <MudPaper Class="pa-3" Elevation="0" Style="background-color: #f5f5f5; border-radius: 8px;">
+                                <MudGrid>
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                                            Employee Details
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Name:</MudText>
+                                        <MudText Typo="Typo.body2">@selectedEmployee.FullName</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Employee No:</MudText>
+                                        <MudText Typo="Typo.body2">@selectedEmployee.No</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Job Title:</MudText>
+                                        <MudText Typo="Typo.body2">@selectedEmployee.JobTitle</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Department:</MudText>
+                                        <MudText Typo="Typo.body2">@selectedEmployee.DepartmentCode</MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudPaper>
+                        </MudItem>
+
+                        <!-- Employee Scale -->
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="employeeScale"
+                                          Label="Employee Scale/Position"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <!-- Trip Dates for Employee -->
+                        <MudItem xs="12" md="6">
+                            <MudDatePicker @bind-Date="employeeStartDate"
+                                           Label="Start Date *"
+                                           DateFormat="yyyy-MM-dd"
+                                           Required="true"
+                                           MinDate="@GetMinDate()"
+                                           MaxDate="@GetMaxDate()"
+                                           Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudDatePicker @bind-Date="employeeEndDate"
+                                           Label="End Date *"
+                                           DateFormat="yyyy-MM-dd"
+                                           Required="true"
+                                           MinDate="@GetMinDate()"
+                                           MaxDate="@GetMaxDate()"
+                                           Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <!-- Days Calculation -->
+                        <MudItem xs="12">
+                            <MudPaper Class="pa-2" Elevation="0" Style="background-color: #f5f5f5; border-radius: 4px;">
+                                <MudGrid Spacing="1">
+                                    <MudItem xs="6">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Number of Days:</MudText>
+                                        <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                            <strong>@CalculateDays()</strong>
+                                        </MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudPaper>
+                        </MudItem>
+                    }
+
+                    <!-- Validation for employee limit -->
+                    @if (travellingEmployees.Count >= request?.NoOfEmployees)
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Error" Dense="true">
+                                Employee limit reached (@request.NoOfEmployees employees). Cannot add more employees.
+                            </MudAlert>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseAddEmployeeDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => AddEmployee())"
+                           Disabled="@(!employeeFormValid || addingEmployee || (travellingEmployees.Count >= request?.NoOfEmployees))">
+                    @if (addingEmployee)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Adding...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                        <span class="ms-2">Add Employee</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string RequestNo { get; set; } = "";
+
+    private Models.TransportRequest? request;
+    private List<Models.TravellingEmployee> travellingEmployees = new();
+    private bool loading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = "";
+
+    // Add employee drawer
+    private bool addEmployeeDrawerOpen = false;
+    private MudForm employeeForm;
+    private bool employeeFormValid;
+    private Models.Employee? selectedEmployee;
+    private List<Models.Employee> searchedEmployees = new();
+    private string employeeScale = "";
+    private DateTime? employeeStartDate;
+    private DateTime? employeeEndDate;
+    private bool addingEmployee = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            // Load request details
+            request = await TransportService.GetRequestAsync(RequestNo);
+            if (request == null)
+            {
+                errorMessage = "Request not found.";
+                loading = false;
+                StateHasChanged();
+                return;
+            }
+
+            // Load travelling employees
+            await LoadTravellingEmployees();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load data: {ex.Message}";
+            Console.WriteLine($"❌ Error loading data: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadTravellingEmployees()
+    {
+        travellingEmployees = await TransportService.GetTravellingEmployeesAsync(RequestNo);
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/transport-request");
+    }
+
+    private void OpenAddEmployeeDrawer()
+    {
+        if (request != null && travellingEmployees.Count >= request.NoOfEmployees)
+        {
+            Snackbar.Add("Employee limit reached. Cannot add more employees.", Severity.Warning);
+            return;
+        }
+
+        addEmployeeDrawerOpen = true;
+        selectedEmployee = null;
+        employeeScale = "";
+        employeeStartDate = DateTime.Now;
+        employeeEndDate = DateTime.Now;
+        searchedEmployees.Clear();
+    }
+
+    private void CloseAddEmployeeDrawer()
+    {
+        addEmployeeDrawerOpen = false;
+    }
+
+    private async Task<IEnumerable<Models.Employee>> SearchEmployees(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            searchedEmployees.Clear();
+            return searchedEmployees;
+        }
+
+        searchedEmployees = await TransportService.SearchEmployeesForTravelAsync(value);
+        return searchedEmployees;
+    }
+
+    private DateTime? GetMinDate()
+    {
+        if (request != null && DateTime.TryParse(request.StartDate, out var startDate))
+            return startDate;
+        return DateTime.Now;
+    }
+
+    private DateTime? GetMaxDate()
+    {
+        if (request != null && DateTime.TryParse(request.EndDate, out var endDate))
+            return endDate;
+        return DateTime.Now.AddDays(30);
+    }
+
+    private decimal CalculateDays()
+    {
+        if (employeeStartDate == null || employeeEndDate == null || employeeEndDate < employeeStartDate)
+            return 0;
+
+        var days = (employeeEndDate.Value - employeeStartDate.Value).Days + 1;
+        return days > 0 ? days : 0;
+    }
+
+    private async Task AddEmployee()
+    {
+        try
+        {
+            await employeeForm.Validate();
+
+            if (!employeeForm.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            if (request == null)
+            {
+                Snackbar.Add("Request not found", Severity.Error);
+                return;
+            }
+
+            if (selectedEmployee == null)
+            {
+                Snackbar.Add("Please select an employee", Severity.Error);
+                return;
+            }
+
+            if (travellingEmployees.Count >= request.NoOfEmployees)
+            {
+                Snackbar.Add("Employee limit reached. Cannot add more employees.", Severity.Error);
+                return;
+            }
+
+            // Check if employee is already added
+            if (travellingEmployees.Any(e => e.EmployeeNo == selectedEmployee.No))
+            {
+                Snackbar.Add("This employee is already added to the trip", Severity.Warning);
+                return;
+            }
+
+            addingEmployee = true;
+            StateHasChanged();
+
+            var employee = new Models.TravellingEmployeeCreate
+            {
+                RequestNo = request.RequestNo,
+                EmployeeNo = selectedEmployee.No,
+                EmployeeName = selectedEmployee.FullName,
+                EmployeeScale = employeeScale,
+                StartDate = employeeStartDate?.ToString("yyyy-MM-dd") ?? "",
+                EndDate = employeeEndDate?.ToString("yyyy-MM-dd") ?? "",
+                NoOfDays = CalculateDays()
+            };
+
+            var result = await TransportService.AddTravellingEmployeeAsync(employee);
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add("Employee added successfully", Severity.Success);
+                CloseAddEmployeeDrawer();
+                await LoadTravellingEmployees();
+            }
+            else
+            {
+                Snackbar.Add(result, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            addingEmployee = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveEmployee(TravellingEmployee employee)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Remove Employee",
+            $"Are you sure you want to remove {employee.EmployeeName} from the trip?",
+            yesText: "Remove",
+            cancelText: "Cancel",
+            options: new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                CloseButton = true
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var removed = await TransportService.RemoveTravellingEmployeeAsync(
+                    employee.EmployeeNo,
+                    request?.RequestNo ?? "",
+                    employee.ODataEtag);
+
+                if (removed)
+                {
+                    Snackbar.Add("Employee removed successfully", Severity.Success);
+                    await LoadTravellingEmployees();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to remove employee", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private void EditEmployeeDetails(TravellingEmployee employee)
+    {
+        // You can implement edit functionality here
+        Snackbar.Add($"Edit functionality for {employee.EmployeeName} - To be implemented", Severity.Info);
+    }
+
+    private void ViewEmployeeProfile(string employeeNo)
+    {
+        Snackbar.Add($"Viewing profile for {employeeNo}", Severity.Info);
+    }
+
+    private string FormatDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString))
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+}

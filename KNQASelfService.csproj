@@ -12,7 +12,7 @@
 		<PackageReference Include="Microsoft.Identity.Client" Version="4.73.1" />
 		<PackageReference Include="RestSharp" Version="112.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
-		<PackageReference Include="MudBlazor" Version="8.9.0" />
+		<PackageReference Include="MudBlazor" Version="8.15.0" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.4" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.4" />

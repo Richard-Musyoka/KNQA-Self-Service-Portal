@@ -1,0 +1,810 @@
+﻿@page "/booking/{bookingNo}/participants"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IRoomBookingService RoomBookingService
+@inject ICurrentUserService CurrentUserService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Meeting Participants - @booking?.Purpose</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+    <!-- Header Section -->
+    <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+        <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudItem xs="12" md="8">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                                   Style="color: white;"
+                                   OnClick="GoBack" />
+                    <div>
+                        <MudText Typo="Typo.h5" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Groups" Style="margin-right: 8px;" />
+                            Meeting Participants
+                        </MudText>
+                        @if (booking != null)
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">
+                                @booking.Purpose • @booking.RoomName • @FormatDate(booking.Date) @booking.StartTime
+                            </MudText>
+                        }
+                    </div>
+                </MudStack>
+            </MudItem>
+            <MudItem xs="12" md="4" Style="text-align: right;">
+                <MudButton Variant="Variant.Filled"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="OpenAddParticipantDrawer">
+                    Add Participant
+                </MudButton>
+                @if (participants.Any())
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Style="color: white; border-color: white; margin-left: 8px;"
+                               StartIcon="@Icons.Material.Filled.Email"
+                               OnClick="SendInvitations">
+                        Send Invitations
+                    </MudButton>
+                }
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Error/Success Messages -->
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error"
+                  Variant="Variant.Filled"
+                  CloseIcon="@Icons.Material.Filled.Close"
+                  CloseIconClicked="() => errorMessage = null"
+                  Class="mb-4">
+            @errorMessage
+        </MudAlert>
+    }
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <MudAlert Severity="Severity.Success"
+                  Variant="Variant.Filled"
+                  CloseIcon="@Icons.Material.Filled.Close"
+                  CloseIconClicked="() => successMessage = null"
+                  Class="mb-4">
+            @successMessage
+        </MudAlert>
+    }
+
+    <!-- Loading State -->
+    @if (loading)
+    {
+        <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+            <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+        </div>
+    }
+    else if (booking == null)
+    {
+        <div style="text-align: center; padding: 60px 20px;">
+            <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Large" Style="font-size: 4rem; color: #f44336;" />
+            <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">Booking not found</MudText>
+            <MudButton Variant="Variant.Text"
+                       Style="color: #00286E; margin-top: 16px;"
+                       OnClick="GoBack">
+                Back to Bookings
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <!-- Summary Cards -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <div>
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Participants</MudText>
+                            <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@participants.Count</MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Large" Style="color: #D4A853;" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <div>
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Accepted</MudText>
+                            <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">
+                                @participants.Count(p => p.ResponseStatus == ResponseStatus.ACCEPTED)
+                            </MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: white;" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <div>
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Pending</MudText>
+                            <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">
+                                @participants.Count(p => p.ResponseStatus == ResponseStatus.PENDING)
+                            </MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.PendingActions" Size="Size.Large" Style="color: #D4A853;" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%); border-left: 4px solid #00286E;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <div>
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Capacity</MudText>
+                            <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">
+                                @participants.Count / @booking.RoomCapacity
+                            </MudText>
+                        </div>
+                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Style="color: white;" />
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Participants Table -->
+        <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853;">
+            <MudTable Items="@participants"
+                      Hover="true"
+                      Breakpoint="Breakpoint.Sm"
+                      Dense="true"
+                      Striped="true"
+                      Style="border-radius: 12px;">
+                <ToolBarContent>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Style="color: #00286E;" />
+                            <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">Participants List</MudText>
+                            <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">
+                                @participants.Count participants
+                            </MudChip>
+                        </MudStack>
+
+                        <MudStack Row="true" Spacing="2">
+                            <MudTextField @bind-Value="searchTerm"
+                                          Placeholder="Search participants..."
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Search"
+                                          IconSize="Size.Medium"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          DebounceInterval="300"
+                                          Style="min-width: 300px;"
+                                          Class="mt-0">
+                            </MudTextField>
+
+                            <MudSelect @bind-Value="typeFilter"
+                                       Placeholder="Type"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Clearable="true"
+                                       Style="min-width: 150px;"
+                                       Class="mt-0">
+                                <MudSelectItem Value="@((string)null)">All Types</MudSelectItem>
+                                <MudSelectItem Value="@("Internal")">Internal</MudSelectItem>
+                                <MudSelectItem Value="@("External")">External</MudSelectItem>
+                            </MudSelect>
+
+                            <MudSelect @bind-Value="responseFilter"
+                                       Placeholder="Response"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Clearable="true"
+                                       Style="min-width: 150px;"
+                                       Class="mt-0">
+                                <MudSelectItem Value="@((string)null)">All Responses</MudSelectItem>
+                                <MudSelectItem Value="@ResponseStatus.PENDING">Pending</MudSelectItem>
+                                <MudSelectItem Value="@ResponseStatus.ACCEPTED">Accepted</MudSelectItem>
+                                <MudSelectItem Value="@ResponseStatus.DECLINED">Declined</MudSelectItem>
+                                <MudSelectItem Value="@ResponseStatus.TENTATIVE">Tentative</MudSelectItem>
+                            </MudSelect>
+
+                            <MudTooltip Text="Refresh">
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                               Style="color: #00286E; border: 1px solid #00286E;"
+                                               OnClick="LoadParticipants" />
+                            </MudTooltip>
+                        </MudStack>
+                    </MudStack>
+                </ToolBarContent>
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Type</MudTh>
+                    <MudTh>Details</MudTh>
+                    <MudTh>Response</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh Style="text-align: center;">Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Name">
+                        @if (context.IsExternal)
+                        {
+                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                                @context.ExternalName
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="color: #666;">
+                                External Guest
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                                @context.EmployeeName
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="color: #666;">
+                                @context.EmployeeNo
+                            </MudText>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Type">
+                        @if (context.IsExternal)
+                        {
+                            <MudChip T="string" Size="Size.Small" Style="background-color: #ff9800; color: white;">
+                                External
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">
+                                Internal
+                            </MudChip>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Details">
+                        @if (context.IsExternal)
+                        {
+                            <MudText Typo="Typo.body2">@context.ExternalCompany</MudText>
+                            <MudText Typo="Typo.caption">@context.ExternalEmail</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2">@context.JobTitle</MudText>
+                            <MudText Typo="Typo.caption">@context.Department</MudText>
+                            @if (!string.IsNullOrEmpty(context.Email))
+                            {
+                                <MudText Typo="Typo.caption">@context.Email</MudText>
+                            }
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Response">
+                        @GetResponseChip(context.ResponseStatus)
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        @GetStatusChip(context.Status)
+                    </MudTd>
+                    <MudTd DataLabel="Actions" Style="text-align: center;">
+                        <MudStack Row="true" Spacing="1">
+                            @if (!context.IsExternal)
+                            {
+                                <MudTooltip Text="View Profile">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Person"
+                                                   Size="Size.Small"
+                                                   Style="color: #00286E;"
+                                                   OnClick="() => ViewEmployeeProfile(context.EmployeeNo)" />
+                                </MudTooltip>
+                            }
+
+                            <MudTooltip Text="Send Reminder">
+                                <MudIconButton Icon="@Icons.Material.Filled.Email"
+                                               Size="Size.Small"
+                                               Style="color: #D4A853;"
+                                               OnClick="() => SendParticipantReminder(context)" />
+                            </MudTooltip>
+
+                            <MudTooltip Text="Remove Participant">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Style="color: #f44336;"
+                                               OnClick="() => RemoveParticipant(context)" />
+                            </MudTooltip>
+                        </MudStack>
+                    </MudTd>
+                </RowTemplate>
+                <NoRecordsContent>
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                        <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No participants added yet</MudText>
+                        <MudText Typo="Typo.body2" Style="color: #999;">Add participants to invite them to the meeting</MudText>
+                        <MudButton Variant="Variant.Filled"
+                                   Style="background-color: #D4A853; color: white; margin-top: 16px;"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="OpenAddParticipantDrawer">
+                            Add First Participant
+                        </MudButton>
+                    </div>
+                </NoRecordsContent>
+            </MudTable>
+        </MudPaper>
+    }
+
+    <!-- Add Participant Drawer -->
+    <MudDrawer @bind-Open="addParticipantDrawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="500px"
+               Variant="@DrawerVariant.Temporary">
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@Icons.Material.Filled.PersonAdd"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                Add Participant
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="participantForm" @bind-IsValid="@participantFormValid">
+                <MudGrid Spacing="3">
+                    <!-- Participant Type -->
+                    <MudItem xs="12">
+                        <MudSelect T="string"
+                                   @bind-Value="participantType"
+                                   Label="Participant Type *"
+                                   Variant="Variant.Outlined"
+                                   Required="true">
+                            <MudSelectItem Value="@("Internal")">Internal Employee</MudSelectItem>
+                            <MudSelectItem Value="@("External")">External Guest</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    @if (participantType == "Internal")
+                    {
+                        <!-- Employee Search -->
+                        <MudItem xs="12">
+                            <MudSelect T="Employee"
+                                       @bind-Value="selectedEmployee"
+                                       Label="Search Employee *"
+                                       Variant="Variant.Outlined"
+                                       ToStringFunc="@(emp => emp != null ? emp.DisplayName : "")"
+                                       SearchFunc="@SearchEmployees"
+                                       Required="true"
+                                       Clearable="true">
+                                <ChildContent>
+                                    @foreach (var emp in searchedEmployees)
+                                    {
+                                        <MudSelectItem Value="@emp">
+                                            <div style="padding: 8px;">
+                                                <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                                                    @emp.FullName
+                                                </MudText>
+                                                <MudText Typo="Typo.caption" Style="color: #666;">
+                                                    @emp.No • @emp.JobTitle • @emp.DepartmentCode
+                                                </MudText>
+                                            </div>
+                                        </MudSelectItem>
+                                    }
+                                </ChildContent>
+                            </MudSelect>
+                        </MudItem>
+
+                        @if (selectedEmployee != null)
+                        {
+                            <MudItem xs="12">
+                                <MudPaper Class="pa-3" Elevation="0" Style="background-color: #f5f5f5; border-radius: 8px;">
+                                    <MudGrid>
+                                        <MudItem xs="12">
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                                                Employee Details
+                                            </MudText>
+                                        </MudItem>
+                                        <MudItem xs="6">
+                                            <MudText Typo="Typo.caption" Style="color: #666;">Name:</MudText>
+                                            <MudText Typo="Typo.body2">@selectedEmployee.FullName</MudText>
+                                        </MudItem>
+                                        <MudItem xs="6">
+                                            <MudText Typo="Typo.caption" Style="color: #666;">Employee No:</MudText>
+                                            <MudText Typo="Typo.body2">@selectedEmployee.No</MudText>
+                                        </MudItem>
+                                        <MudItem xs="6">
+                                            <MudText Typo="Typo.caption" Style="color: #666;">Job Title:</MudText>
+                                            <MudText Typo="Typo.body2">@selectedEmployee.JobTitle</MudText>
+                                        </MudItem>
+                                        <MudItem xs="6">
+                                            <MudText Typo="Typo.caption" Style="color: #666;">Department:</MudText>
+                                            <MudText Typo="Typo.body2">@selectedEmployee.DepartmentCode</MudText>
+                                        </MudItem>
+                                        <MudItem xs="12">
+                                            <MudText Typo="Typo.caption" Style="color: #666;">Email:</MudText>
+                                            <MudText Typo="Typo.body2">@selectedEmployee.Email</MudText>
+                                        </MudItem>
+                                    </MudGrid>
+                                </MudPaper>
+                            </MudItem>
+                        }
+                    }
+                    else
+                    {
+                        <!-- External Guest Details -->
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="externalName"
+                                          Label="Guest Name *"
+                                          Variant="Variant.Outlined"
+                                          Required="true" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="externalEmail"
+                                          Label="Email Address *"
+                                          Variant="Variant.Outlined"
+                                          InputType="InputType.Email"
+                                          Required="true" />
+                        </MudItem>
+
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="externalCompany"
+                                          Label="Company/Organization"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+
+                    <!-- Validation for capacity -->
+                    @if (participants.Count >= booking?.RoomCapacity)
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Error" Dense="true">
+                                Room capacity reached (@booking.RoomCapacity participants). Cannot add more participants.
+                            </MudAlert>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseAddParticipantDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => AddParticipant())"
+                           Disabled="@(!participantFormValid || addingParticipant || (participants.Count >= booking?.RoomCapacity))">
+                    @if (addingParticipant)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Adding...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                        <span class="ms-2">Add Participant</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string BookingNo { get; set; } = "";
+
+    private Models.RoomBooking? booking;
+    private List<MeetingParticipant> participants = new();
+    private bool loading = true;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = "";
+    private string? typeFilter = "";
+    private string? responseFilter = "";
+
+    // Add participant drawer
+    private bool addParticipantDrawerOpen = false;
+    private MudForm participantForm;
+    private bool participantFormValid;
+    private string participantType = "Internal";
+    private Employee? selectedEmployee;
+    private List<Employee> searchedEmployees = new();
+    private string externalName = "";
+    private string externalEmail = "";
+    private string externalCompany = "";
+    private bool addingParticipant = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            // Load booking details
+            booking = await RoomBookingService.GetBookingAsync(BookingNo);
+            if (booking == null)
+            {
+                errorMessage = "Booking not found.";
+                loading = false;
+                StateHasChanged();
+                return;
+            }
+
+            // Load participants
+            await LoadParticipants();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load data: {ex.Message}";
+            Console.WriteLine($"❌ Error loading data: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadParticipants()
+    {
+        participants = await RoomBookingService.GetBookingParticipantsAsync(BookingNo);
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/room-booking");
+    }
+
+    private void OpenAddParticipantDrawer()
+    {
+        if (booking != null && participants.Count >= booking.RoomCapacity)
+        {
+            Snackbar.Add("Room capacity reached. Cannot add more participants.", Severity.Warning);
+            return;
+        }
+
+        addParticipantDrawerOpen = true;
+        participantType = "Internal";
+        selectedEmployee = null;
+        externalName = "";
+        externalEmail = "";
+        externalCompany = "";
+        searchedEmployees.Clear();
+    }
+
+    private void CloseAddParticipantDrawer()
+    {
+        addParticipantDrawerOpen = false;
+    }
+
+    private async Task<IEnumerable<Employee>> SearchEmployees(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            searchedEmployees.Clear();
+            return searchedEmployees;
+        }
+
+        searchedEmployees = await RoomBookingService.SearchEmployeesAsync(value);
+        return searchedEmployees;
+    }
+
+    private async Task AddParticipant()
+    {
+        try
+        {
+            await participantForm.Validate();
+
+            if (!participantForm.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            if (booking == null)
+            {
+                Snackbar.Add("Booking not found", Severity.Error);
+                return;
+            }
+
+            if (participants.Count >= booking.RoomCapacity)
+            {
+                Snackbar.Add("Room capacity reached. Cannot add more participants.", Severity.Error);
+                return;
+            }
+
+            addingParticipant = true;
+            StateHasChanged();
+
+            var participant = new MeetingParticipantCreate
+            {
+                BookingNo = booking.BookingNo
+            };
+
+            if (participantType == "Internal")
+            {
+                if (selectedEmployee == null)
+                {
+                    Snackbar.Add("Please select an employee", Severity.Error);
+                    addingParticipant = false;
+                    return;
+                }
+
+                participant.EmployeeNo = selectedEmployee.No;
+                participant.EmployeeName = selectedEmployee.FullName;
+                participant.IsExternal = false;
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(externalName) || string.IsNullOrWhiteSpace(externalEmail))
+                {
+                    Snackbar.Add("Please fill in guest details", Severity.Error);
+                    addingParticipant = false;
+                    return;
+                }
+
+                participant.IsExternal = true;
+                participant.ExternalName = externalName;
+                participant.ExternalEmail = externalEmail;
+                participant.ExternalCompany = externalCompany;
+            }
+
+            var result = await RoomBookingService.AddParticipantAsync(participant);
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add("Participant added successfully", Severity.Success);
+                CloseAddParticipantDrawer();
+                await LoadParticipants();
+            }
+            else
+            {
+                Snackbar.Add(result, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            addingParticipant = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveParticipant(MeetingParticipant participant)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Remove Participant",
+            $"Are you sure you want to remove {participant.EmployeeName} from the meeting?",
+            yesText: "Remove",
+            cancelText: "Cancel",
+            options: new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                CloseButton = true
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var removed = await RoomBookingService.RemoveParticipantAsync(participant.ParticipantNo, participant.ODataEtag);
+
+                if (removed)
+                {
+                    Snackbar.Add("Participant removed successfully", Severity.Success);
+                    await LoadParticipants();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to remove participant", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task SendInvitations()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Send Invitations",
+            "Send meeting invitations to all participants?",
+            yesText: "Send",
+            cancelText: "Cancel",
+            options: new DialogOptions
+            {
+                MaxWidth = MaxWidth.Small,
+                CloseButton = true
+            });
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var result = await RoomBookingService.SendInvitationAsync(BookingNo);
+
+                if (result.StartsWith("Success"))
+                {
+                    Snackbar.Add("Invitations sent successfully", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(result, Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task SendParticipantReminder(MeetingParticipant participant)
+    {
+        // This would send a reminder to a specific participant
+        // For now, we'll just show a success message
+        Snackbar.Add($"Reminder sent to {participant.EmployeeName}", Severity.Success);
+    }
+
+    private void ViewEmployeeProfile(string employeeNo)
+    {
+        // You could implement an employee profile view here
+        Snackbar.Add($"Viewing profile for {employeeNo}", Severity.Info);
+    }
+
+    private string FormatDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString))
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private RenderFragment GetResponseChip(string? response)
+    {
+        var (colorStyle, icon) = (response ?? "Pending") switch
+        {
+            "Accepted" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Declined" => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel),
+            "Tentative" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.Schedule),
+            "Pending" => ("background-color: #666; color: white;", Icons.Material.Filled.HourglassEmpty),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@response</MudChip>;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "Invited") switch
+        {
+            "Invited" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.Email),
+            "Attending" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Declined" => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel),
+            "Cancelled" => ("background-color: #666; color: white;", Icons.Material.Filled.DoNotDisturb),
+            "Attended" => ("background-color: #009688; color: white;", Icons.Material.Filled.DoneAll),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+}

@@ -1,0 +1,1010 @@
+﻿@page "/incident-management"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IIncidentManagementService IncidentManagementService
+@inject ICurrentUserService CurrentUserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+
+<PageTitle>Incident Management</PageTitle>
+
+<MudLayout>
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="800px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                @(isEditMode ? "Edit Incident" : "Report New Incident")
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@formValid">
+                <MudGrid Spacing="3">
+                    @if (isEditMode && editingIncident != null)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="editingIncident.IncidentReference"
+                                          Label="Incident Reference"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField @bind-Value="editingIncident.IncidentStatus"
+                                          Label="Status"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudTextField Value="@ParseDate(editingIncident.IncidentDate)"
+                                          Label="Original Incident Date"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+
+                    <!-- Employee Information (Read-only) -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-3" Elevation="0" Style="background-color: #f5f5f5;">
+                            <MudText Typo="Typo.subtitle2" Style="color: #00286E; margin-bottom: 8px;">
+                                <strong>Reporter Information</strong>
+                            </MudText>
+                            <MudGrid Spacing="1">
+                                <MudItem xs="12" md="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Employee No:</MudText>
+                                    <MudText Typo="Typo.body2">@currentEmployeeNo</MudText>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Name:</MudText>
+                                    <MudText Typo="Typo.body2">@currentEmployeeName</MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Incident Description -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.IncidentDescription"
+                                      Label="Incident Description *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Lines="5"
+                                      Counter="1000"
+                                      MaxLength="1000"
+                                      HelperText="Provide a detailed description of the incident (minimum 20 characters)"
+                                      Validation="@(new Func<string, IEnumerable<string>>(ValidateIncidentDescription))" />
+                    </MudItem>
+
+                    <!-- Incident Type -->
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="formModel.IncidentType"
+                                   Label="Incident Type *"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   Validation="@(new Func<string, IEnumerable<string>>(ValidateRequiredField))">
+                            <MudSelectItem Value="@("Security Incident/Breach")">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Security" Size="Size.Small" Style="color: #c62828;" />
+                                    <span>Security Incident/Breach</span>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@("Safety Incident")">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Style="color: #ef6c00;" />
+                                    <span>Safety Incident</span>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@("IT / Technical Incident")">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Computer" Size="Size.Small" Style="color: #1565c0;" />
+                                    <span>IT/Technical Incident</span>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@("HR / Personnel Incident")">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Small" Style="color: #7b1fa2;" />
+                                    <span>HR/Personnel Incident</span>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@("Health Incident")">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Size="Size.Small" Style="color: #2e7d32;" />
+                                    <span>Health Incident</span>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@("Facility Incident")">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Style="color: #ff8f00;" />
+                                    <span>Facility Incident</span>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@("Compliance Incident")">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Policy" Size="Size.Small" Style="color: #00695c;" />
+                                    <span>Compliance Incident</span>
+                                </MudStack>
+                            </MudSelectItem>
+                            <MudSelectItem Value="@("Other")">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.MoreHoriz" Size="Size.Small" Style="color: #666;" />
+                                    <span>Other</span>
+                                </MudStack>
+                            </MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Location -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="formModel.IncidenceLocationName"
+                                      Label="Incident Location *"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Validation="@(new Func<string, IEnumerable<string>>(ValidateRequiredField))"
+                                      Placeholder="e.g., Reception, Office 101, Parking Lot"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Place" />
+                    </MudItem>
+
+                    <!-- Incident Date -->
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="incidentDate"
+                                       Label="Incident Date *"
+                                       Variant="Variant.Outlined"
+                                       Required="true"
+                                       MaxDate="DateTime.Today"
+                                       Validation="@(new Func<DateTime?, IEnumerable<string>>(ValidateIncidentDate))" />
+                    </MudItem>
+
+                    <!-- Incident Time -->
+                    <MudItem xs="12" md="6">
+                        <MudTimePicker @bind-Time="incidentTime"
+                                       Label="Incident Time *"
+                                       Variant="Variant.Outlined"
+                                       Required="true"
+                                       Validation="@(new Func<TimeSpan?, IEnumerable<string>>(ValidateIncidentTime))" />
+                    </MudItem>
+
+                    <!-- Summary -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-3"
+                                  Elevation="0"
+                                  Style="background-color: #f5f5f5; border-left: 4px solid #D4A853;">
+                            <MudText Typo="Typo.body2" Style="color: #00286E; margin-bottom: 12px;">
+                                <strong>Incident Summary</strong>
+                            </MudText>
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Type:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(formModel.IncidentType ?? "Not specified")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Location:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(formModel.IncidenceLocationName ?? "Not specified")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Date:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(incidentDate?.ToString("dd MMM yyyy") ?? "Not specified")</strong>
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Time:</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #00286E;">
+                                        <strong>@(incidentTime?.ToString(@"hh\:mm") ?? "Not specified")</strong>
+                                    </MudText>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => SaveIncident())"
+                           Disabled="@(!formValid || saving)">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Saving...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Report" Size="Size.Small" />
+                        <span class="ms-2">@(isEditMode ? "Update" : "Report Incident")</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Report" Style="margin-right: 12px; vertical-align: middle;" />
+                            Incident Management
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(currentEmployeeName))
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                @currentEmployeeName (@currentEmployeeNo)
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudButton Variant="Variant.Filled"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   Style="background-color: #D4A853; color: white; font-weight: 600;"
+                                   Size="Size.Large"
+                                   OnClick="OpenCreateDrawer">
+                            Report Incident
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Error/Success Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="@(() => errorMessage = null)"
+                          Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="@(() => successMessage = null)"
+                          Class="mb-4">
+                    @successMessage
+                </MudAlert>
+            }
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </div>
+            }
+            else
+            {
+                <!-- Summary Cards -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Incidents</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summary.TotalIncidents</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #ff9800 0%, #fb8c00 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Open</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summary.OpenIncidents</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">In Progress</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summary.InProgressIncidents</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Timeline" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #4caf50 0%, #43a047 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Resolved</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summary.ResolvedIncidents</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Filter Section -->
+                <MudPaper Elevation="3" Class="pa-4 mb-4" Style="border-radius: 12px; border-top: 4px solid #D4A853;">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="margin-bottom: 16px;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.FilterList" Style="color: #00286E;" />
+                            <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">Filter Incidents</MudText>
+                        </MudStack>
+                        <MudStack Row="true" Spacing="2">
+                            <MudButton Variant="Variant.Outlined"
+                                       Style="color: #666; border-color: #666;"
+                                       OnClick="ClearFilters"
+                                       StartIcon="@Icons.Material.Filled.Clear">
+                                Clear
+                            </MudButton>
+                            <MudButton Variant="Variant.Filled"
+                                       Style="background-color: #00286E; color: white;"
+                                       OnClick="ApplyFilters"
+                                       Disabled="filtering"
+                                       StartIcon="@Icons.Material.Filled.FilterAlt">
+                                Apply
+                            </MudButton>
+                        </MudStack>
+                    </MudStack>
+
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudTextField @bind-Value="filter.SearchTerm"
+                                          Label="Search"
+                                          Variant="Variant.Outlined"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Search"
+                                          Immediate="true"
+                                          DebounceInterval="300"
+                                          Placeholder="Reference, description..." />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudSelect T="string"
+                                       @bind-Value="filter.IncidentStatus"
+                                       Label="Status"
+                                       Variant="Variant.Outlined"
+                                       Clearable="true">
+                                <MudSelectItem T="string" Value="@null">All Statuses</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Open")">Open</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("In Progress")">In Progress</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Under Review")">Under Review</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Resolved")">Resolved</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Closed")">Closed</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudSelect T="string"
+                                       @bind-Value="filter.IncidentType"
+                                       Label="Type"
+                                       Variant="Variant.Outlined"
+                                       Clearable="true">
+                                <MudSelectItem T="string" Value="@null">All Types</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Security Incident/Breach")">Security</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Safety Incident")">Safety</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("IT / Technical Incident")">IT/Technical</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("HR / Personnel Incident")">HR/Personnel</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Health Incident")">Health</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Facility Incident")">Facility</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Compliance Incident")">Compliance</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Other")">Other</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudSelect T="string"
+                                       @bind-Value="filter.OrderBy"
+                                       Label="Sort By"
+                                       Variant="Variant.Outlined">
+                                <MudSelectItem T="string" Value="@("Incident_Date desc")">Newest First</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Incident_Date asc")">Oldest First</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("Incident_Status asc")">Status (A-Z)</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudDatePicker @bind-Date="filter.FromDate"
+                                           Label="From Date"
+                                           Variant="Variant.Outlined"
+                                           Clearable="true" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudDatePicker @bind-Date="filter.ToDate"
+                                           Label="To Date"
+                                           Variant="Variant.Outlined"
+                                           Clearable="true" />
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+                <!-- Incidents Table -->
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853;">
+                    @if (incidents == null || !incidents.Any())
+                    {
+                        <div style="text-align: center; padding: 60px 20px;">
+                            <MudIcon Icon="@Icons.Material.Filled.AssignmentTurnedIn"
+                                     Size="Size.Large"
+                                     Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                            <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No incidents found</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #999;">
+                                @(string.IsNullOrEmpty(filter.SearchTerm)
+                                                        ? "You haven't reported any incidents yet."
+                                                        : "No incidents match your search criteria.")
+                    </MudText>
+                    @if (string.IsNullOrEmpty(filter.SearchTerm))
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Class="mt-4"
+                                           Style="background-color: #D4A853; color: white;"
+                                           OnClick="OpenCreateDrawer"
+                                           StartIcon="@Icons.Material.Filled.Add">
+                                    Report Your First Incident
+                                </MudButton>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <MudTable Items="@incidents"
+                                  Hover="true"
+                                  Striped="true"
+                                  Breakpoint="Breakpoint.Sm"
+                                  Dense="true"
+                                  Loading="@loading"
+                                  LoadingProgressColor="Color.Primary">
+                            <HeaderContent>
+                                <MudTh>Reference</MudTh>
+                                <MudTh>Description</MudTh>
+                                <MudTh>Type</MudTh>
+                                <MudTh>Location</MudTh>
+                                <MudTh>Status</MudTh>
+                                <MudTh>Date</MudTh>
+                                <MudTh Style="text-align: center;">Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="incident">
+                                <MudTd DataLabel="Reference">
+                                    <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">
+                                        @incident.IncidentReference
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Description">
+                                    <MudText Typo="Typo.body2" Style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        @incident.IncidentDescription
+                                    </MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Type">
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Style="@GetIncidentTypeStyle(incident.IncidentType)">
+                                        @GetIncidentTypeAbbreviation(incident.IncidentType)
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Location">
+                                    <MudText Typo="Typo.body2">@incident.IncidenceLocationName</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Status">
+                                    @GetStatusChip(incident.IncidentStatus)
+                                </MudTd>
+                                <MudTd DataLabel="Date">
+                                    <MudText Typo="Typo.body2">@ParseDate(incident.IncidentDate)</MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #999;">@incident.IncidentTime</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Actions" Style="text-align: center;">
+                                    <MudStack Row="true" Spacing="1">
+                                        <MudTooltip Text="View Details">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                           Size="Size.Small"
+                                                           Style="color: #00286E;"
+                                                           OnClick="@(() => ViewIncidentDetails(incident))" />
+                                        </MudTooltip>
+                                        @{
+                                            var canEdit = incident.IncidentStatus == "Open" || incident.IncidentStatus == "Under Review";
+                                        }
+                                        <MudTooltip Text="@(canEdit ? "Edit Incident" : "Cannot edit - incident is closed or in progress")">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                           Size="Size.Small"
+                                                           Style="@(canEdit ? "color: #D4A853;" : "color: #ccc;")"
+                                                           OnClick="@(() => OpenEditDrawer(incident))"
+                                                           Disabled="@(!canEdit)" />
+                                        </MudTooltip>
+                                    </MudStack>
+                                </MudTd>
+                            </RowTemplate>
+                            <PagerContent>
+                                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+                            </PagerContent>
+                        </MudTable>
+                    }
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool drawerOpen = false;
+    private bool loading = false;
+    private bool filtering = false;
+    private bool saving = false;
+    private bool formValid = true;
+    private bool isEditMode = false;
+
+    private string currentEmployeeNo = string.Empty;
+    private string currentEmployeeName = string.Empty;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private List<Models.IncidentManagement> incidents = new();
+    private Models.IncidentManagement? editingIncident;
+    private Models.IncidentManagementSummary summary = new();
+    private Models.IncidentManagementCreate formModel = new();
+    private Models.IncidentManagementFilter filter = new();
+
+    private DateTime? incidentDate = DateTime.Now;
+    private TimeSpan? incidentTime = DateTime.Now.TimeOfDay;
+
+    private MudForm? form;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("🔍 IncidentManagement page initialized");
+
+        try
+        {
+            // Load current user using ICurrentUserService
+            currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+            currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+
+            Console.WriteLine($"🔍 Current User - Name: {currentEmployeeName}, EmployeeNo: {currentEmployeeNo}");
+
+            if (string.IsNullOrEmpty(currentEmployeeNo))
+            {
+                errorMessage = "Employee number not found. Please log in again.";
+                loading = false;
+                StateHasChanged();
+                return;
+            }
+
+            // Set filter defaults
+            filter = new IncidentManagementFilter
+            {
+                EmployeeNo = currentEmployeeNo,
+                OrderBy = "Incident_Date desc"
+            };
+
+            // Initialize form model
+            formModel = new IncidentManagementCreate
+            {
+                EmployeeNo = currentEmployeeNo,
+                EmployeeName = currentEmployeeName
+            };
+
+            await LoadIncidents();
+            await LoadSummary();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error in OnInitializedAsync: {ex}");
+            errorMessage = $"Error initializing page: {ex.Message}";
+            loading = false;
+        }
+    }
+
+    private async Task LoadIncidents()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            Console.WriteLine($"🔍 Loading incidents for employee: {currentEmployeeNo}");
+
+            incidents = await IncidentManagementService.GetIncidentsAsync(filter);
+
+            Console.WriteLine($"🔍 Loaded {incidents.Count} incidents");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load incidents: {ex.Message}";
+            Console.WriteLine($"❌ Error loading incidents: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadSummary()
+    {
+        try
+        {
+            summary = await IncidentManagementService.GetIncidentSummaryAsync(currentEmployeeNo);
+            Console.WriteLine($"🔍 Loaded summary - Total: {summary.TotalIncidents}, Open: {summary.OpenIncidents}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load summary: {ex.Message}";
+            Console.WriteLine($"❌ Error loading summary: {ex}");
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        try
+        {
+            filtering = true;
+            StateHasChanged();
+
+            await LoadIncidents();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error applying filters: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            filtering = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearFilters()
+    {
+        filter = new IncidentManagementFilter
+        {
+            EmployeeNo = currentEmployeeNo,
+            OrderBy = "Incident_Date desc"
+        };
+
+        await ApplyFilters();
+        Snackbar.Add("Filters cleared", Severity.Info);
+    }
+
+    private void OpenCreateDrawer()
+    {
+        try
+        {
+            isEditMode = false;
+            editingIncident = null;
+            formModel = new IncidentManagementCreate
+            {
+                EmployeeNo = currentEmployeeNo,
+                EmployeeName = currentEmployeeName
+            };
+
+            incidentDate = DateTime.Now;
+            incidentTime = DateTime.Now.TimeOfDay;
+
+            drawerOpen = true;
+            formValid = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error opening create drawer: {ex.Message}");
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async void OpenEditDrawer(Models.IncidentManagement incident)
+    {
+        try
+        {
+            // Fetch the latest version to ensure we have all fields
+            var currentIncident = await IncidentManagementService.GetIncidentAsync(incident.IncidentReference);
+
+            if (currentIncident == null)
+            {
+                Snackbar.Add("Could not load incident details", Severity.Error);
+                return;
+            }
+
+            isEditMode = true;
+            editingIncident = currentIncident;
+
+            formModel = new IncidentManagementCreate
+            {
+                EmployeeNo = currentIncident.EmployeeNo,
+                EmployeeName = currentIncident.EmployeeName,
+                Department = currentIncident.Department,
+                JobTitle = currentIncident.JobTitle,
+                IncidentDescription = currentIncident.IncidentDescription,
+                IncidentType = currentIncident.IncidentType,
+                IncidenceLocationName = currentIncident.IncidenceLocationName
+            };
+
+            if (DateTime.TryParse(currentIncident.IncidentDate, out var date))
+            {
+                incidentDate = date;
+            }
+            else
+            {
+                incidentDate = DateTime.Now;
+            }
+
+            if (TimeSpan.TryParse(currentIncident.IncidentTime, out var time))
+            {
+                incidentTime = time;
+            }
+            else
+            {
+                incidentTime = DateTime.Now.TimeOfDay;
+            }
+
+            drawerOpen = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading incident for edit: {ex.Message}");
+            Snackbar.Add("Failed to load incident for editing", Severity.Error);
+        }
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+        isEditMode = false;
+        editingIncident = null;
+        formModel = new IncidentManagementCreate
+        {
+            EmployeeNo = currentEmployeeNo,
+            EmployeeName = currentEmployeeName
+        };
+        form?.ResetValidation();
+        StateHasChanged();
+    }
+
+    private async Task SaveIncident()
+    {
+        try
+        {
+            await form.Validate();
+
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            // Set date and time from pickers
+            if (incidentDate.HasValue)
+            {
+                formModel.IncidentDate = incidentDate.Value.ToString("yyyy-MM-dd");
+            }
+            else
+            {
+                Snackbar.Add("Please select an incident date", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (incidentTime.HasValue)
+            {
+                formModel.IncidentTime = incidentTime.Value.ToString(@"hh\:mm\:ss");
+            }
+            else
+            {
+                Snackbar.Add("Please select an incident time", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            Console.WriteLine($"📤 {(isEditMode ? "Updating" : "Creating")} incident:");
+            Console.WriteLine($"   Employee: {formModel.EmployeeNo}");
+            Console.WriteLine($"   Type: {formModel.IncidentType}");
+            Console.WriteLine($"   Location: {formModel.IncidenceLocationName}");
+            Console.WriteLine($"   Date: {formModel.IncidentDate}");
+            Console.WriteLine($"   Time: {formModel.IncidentTime}");
+
+            if (isEditMode && editingIncident != null)
+            {
+                var updateModel = new IncidentManagementUpdate
+                {
+                    IncidentReference = editingIncident.IncidentReference,
+                    IncidentDescription = formModel.IncidentDescription,
+                    IncidenceLocationName = formModel.IncidenceLocationName,
+                    IncidentType = formModel.IncidentType
+                };
+
+                Console.WriteLine($"🔄 Updating incident {editingIncident.IncidentReference} with ETag: {editingIncident.ODataEtag}");
+
+                var result = await IncidentManagementService.UpdateIncidentAsync(updateModel, editingIncident.ODataEtag);
+
+                if (result.Success)
+                {
+                    successMessage = "Incident updated successfully!";
+                    Snackbar.Add("Incident updated successfully", Severity.Success);
+                    await LoadIncidents();
+                    await LoadSummary();
+                    CloseDrawer();
+                }
+                else
+                {
+                    errorMessage = result.Message;
+                    Snackbar.Add($"Update failed: {result.Message}", Severity.Error, config => { config.VisibleStateDuration = 8000; });
+                }
+            }
+            else
+            {
+                var result = await IncidentManagementService.CreateIncidentAsync(formModel);
+
+                if (result.Success)
+                {
+                    successMessage = $"Incident reported successfully! Reference: {result.Data?.IncidentReference ?? "N/A"}";
+                    Snackbar.Add("Incident reported successfully", Severity.Success);
+                    await LoadIncidents();
+                    await LoadSummary();
+                    CloseDrawer();
+                }
+                else
+                {
+                    errorMessage = result.Message;
+                    Snackbar.Add($"Report failed: {result.Message}", Severity.Error, config => { config.VisibleStateDuration = 8000; });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception in SaveIncident: {ex}");
+            errorMessage = $"Error saving incident: {ex.Message}";
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ViewIncidentDetails(Models.IncidentManagement incident)
+    {
+        try
+        {
+            var parameters = new DialogParameters
+            {
+                { "Incident", incident }
+            };
+
+            var options = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Medium,
+                FullWidth = true,
+                CloseButton = true,
+                CloseOnEscapeKey = true
+            };
+
+            var dialog = DialogService.Show<IncidentDetails>("Incident Details", parameters, options);
+            await dialog.Result;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error viewing incident details: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "N/A";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private string GetIncidentTypeStyle(string? incidentType)
+    {
+        var (backgroundColor, textColor) = (incidentType ?? "").ToLower() switch
+        {
+            var x when x.Contains("security") => ("#ffebee", "#c62828"),
+            var x when x.Contains("safety") => ("#fff3e0", "#ef6c00"),
+            var x when x.Contains("it") || x.Contains("technical") => ("#e3f2fd", "#1565c0"),
+            var x when x.Contains("hr") || x.Contains("personnel") => ("#f3e5f5", "#7b1fa2"),
+            var x when x.Contains("health") => ("#e8f5e8", "#2e7d32"),
+            var x when x.Contains("facility") => ("#fff8e1", "#ff8f00"),
+            var x when x.Contains("compliance") => ("#e0f2f1", "#00695c"),
+            _ => ("#f5f5f5", "#666666")
+        };
+
+        return $"background-color: {backgroundColor}; color: {textColor}; font-weight: 600;";
+    }
+
+    private string GetIncidentTypeAbbreviation(string? incidentType)
+    {
+        return (incidentType ?? "Other").ToLower() switch
+        {
+            var x when x.Contains("security") => "SEC",
+            var x when x.Contains("safety") => "SAF",
+            var x when x.Contains("it") || x.Contains("technical") => "IT",
+            var x when x.Contains("hr") || x.Contains("personnel") => "HR",
+            var x when x.Contains("health") => "HLT",
+            var x when x.Contains("facility") => "FAC",
+            var x when x.Contains("compliance") => "CMP",
+            _ => "OTH"
+        };
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon) = (status ?? "Open") switch
+        {
+            "Open" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.FiberNew),
+            "In Progress" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.Autorenew),
+            "Under Review" => ("background-color: #9c27b0; color: white;", Icons.Material.Filled.RateReview),
+            "Resolved" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle),
+            "Closed" => ("background-color: #666; color: white;", Icons.Material.Filled.Lock),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@status</MudChip>;
+    }
+
+    #region Validation Methods
+    private IEnumerable<string> ValidateRequiredField(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            yield return "This field is required";
+    }
+
+    private IEnumerable<string> ValidateIncidentDescription(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            yield return "Incident description is required";
+        else if (value.Length < 20)
+            yield return "Incident description must be at least 20 characters";
+    }
+
+    private IEnumerable<string> ValidateIncidentDate(DateTime? date)
+    {
+        if (!date.HasValue)
+            yield return "Incident date is required";
+        else if (date.Value > DateTime.Now)
+            yield return "Incident date cannot be in the future";
+    }
+
+    private IEnumerable<string> ValidateIncidentTime(TimeSpan? time)
+    {
+        if (!time.HasValue)
+            yield return "Incident time is required";
+    }
+    #endregion
+}
