@@ -1,0 +1,1066 @@
+﻿@page "/appraisals"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IAppraisalService AppraisalService
+@inject IPerformanceTargetService PerformanceTargetService
+@inject IEmployeeService EmployeeService
+@inject ICurrentUserService CurrentUserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Performance Appraisals</PageTitle>
+
+<MudLayout>
+    <!-- Create Appraisal Drawer -->
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="600px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@Icons.Material.Filled.Add"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                Create New Appraisal
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            @if (eligibleTargets.Any())
+            {
+                <MudText Typo="Typo.body2" Style="color: #666; margin-bottom: 16px;">
+                    Select a performance target to create appraisal from:
+                </MudText>
+                
+                <MudList T="PerformanceTarget">
+                    @foreach (var target in eligibleTargets)
+                    {
+                        <MudListItem T="PerformanceTarget" Value="@target" OnClick="@(() => CreateAppraisalFromTarget(target))">
+                            <MudListItemContent>
+                                <MudListItemText>
+                                    <MudText Typo="Typo.body1" Style="font-weight: 600; color: #00286E;">@target.ObjectiveNo</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #666;">
+                                        @target.AppraisalPeriod - @target.AppraisalCategory
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #999;">
+                                        @target.TargetLines.Count target lines • Created: @target.CreatedDate?.ToString("dd/MM/yyyy")
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #999;">
+                                        Employee: @target.AppraiseeName (@target.EmployeeNo)
+                                    </MudText>
+                                </MudListItemText>
+                            </MudListItemContent>
+                            <MudListItemIcon>
+                                <MudIcon Icon="@Icons.Material.Filled.ArrowForward" />
+                            </MudListItemIcon>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+            else
+            {
+                <div style="text-align: center; padding: 40px;">
+                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Large" Style="color: #ccc; margin-bottom: 16px;" />
+                    <MudText Typo="Typo.h6" Style="color: #666; margin-bottom: 8px;">No eligible performance targets found</MudText>
+                    <MudText Typo="Typo.body2" Style="color: #999;">
+                        You need an approved performance target to create an appraisal. 
+                        Please create and approve a performance target first.
+                    </MudText>
+                    
+                    <div style="margin-top: 24px;">
+                        <MudButton Variant="Variant.Filled"
+                                   Style="background-color: #00286E; color: white;"
+                                   OnClick="NavigateToTargets"
+                                   EndIcon="@Icons.Material.Filled.ArrowForward">
+                            Go to Performance Targets
+                        </MudButton>
+                    </div>
+                </div>
+            }
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                @if (creating)
+                {
+                    <MudButton Variant="Variant.Filled" Style="background-color: #D4A853; color: white;" Disabled="true">
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Creating...</span>
+                    </MudButton>
+                }
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <!-- Main Content -->
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Assessment" Style="margin-right: 12px; vertical-align: middle;" />
+                            Performance Appraisals & Evaluations
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(currentEmployeeName))
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                @currentEmployeeName (@currentEmployeeNo)
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudButtonGroup Variant="Variant.Filled">
+                            <MudButton StartIcon="@Icons.Material.Filled.Add"
+                                       Style="background-color: #D4A853; color: white;"
+                                       OnClick="OpenCreateDrawer"
+                                       Disabled="@loading">
+                                New Appraisal
+                            </MudButton>
+                            @if (appraisals.Any())
+                            {
+                                <MudButton StartIcon="@Icons.Material.Filled.Download"
+                                           Style="background-color: #00286E; color: white;"
+                                           OnClick="ExportToExcel"
+                                           Disabled="@exporting">
+                                    @if (exporting)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                                    }
+                                    else
+                                    {
+                                        <span>Export</span>
+                                    }
+                                </MudButton>
+                            }
+                        </MudButtonGroup>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Summary Cards -->
+            <MudGrid Spacing="3" Class="mb-4">
+                <MudItem xs="6" sm="3">
+                    <MudCard OnClick="@(() => FilterByStatus(AppraisalStatus.OPEN))" Class="cursor-pointer">
+                        <MudCardContent>
+                            <MudStack Spacing="3">
+                                <MudText Typo="Typo.body2" Style="color: #666;">Open</MudText>
+                                <MudText Typo="Typo.h4" Style="color: #ff9800; font-weight: 600;">@summary.OpenAppraisals</MudText>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudCard OnClick="@(() => FilterByStatus(AppraisalStatus.SUBMITTED))" Class="cursor-pointer">
+                        <MudCardContent>
+                            <MudStack Spacing="3">
+                                <MudText Typo="Typo.body2" Style="color: #666;">Submitted</MudText>
+                                <MudText Typo="Typo.h4" Style="color: #1976d2; font-weight: 600;">@summary.SubmittedAppraisals</MudText>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudCard OnClick="@(() => FilterByStatus(AppraisalStatus.APPRAISED))" Class="cursor-pointer">
+                        <MudCardContent>
+                            <MudStack Spacing="3">
+                                <MudText Typo="Typo.body2" Style="color: #666;">Appraised</MudText>
+                                <MudText Typo="Typo.h4" Style="color: #9c27b0; font-weight: 600;">@summary.AppraisedAppraisals</MudText>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudCard OnClick="@(() => FilterByStatus(AppraisalStatus.COMPLETED))" Class="cursor-pointer">
+                        <MudCardContent>
+                            <MudStack Spacing="3">
+                                <MudText Typo="Typo.body2" Style="color: #666;">Completed</MudText>
+                                <MudText Typo="Typo.h4" Style="color: #4caf50; font-weight: 600;">@summary.CompletedAppraisals</MudText>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            </MudGrid>
+
+            <!-- My Pending Actions Cards -->
+            <MudGrid Spacing="3" Class="mb-4">
+                <MudItem xs="12" sm="6">
+                    <MudCard Style="border-left: 4px solid #ff9800;" OnClick="ShowMyPendingAppraisals" Class="cursor-pointer">
+                        <MudCardContent>
+                            <MudStack Spacing="3">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <div>
+                                        <MudText Typo="Typo.body2" Style="color: #666;">My Pending Appraisals</MudText>
+                                        <MudText Typo="Typo.h5" Style="color: #ff9800; font-weight: 600;">@summary.MyAppraisals</MudText>
+                                    </div>
+                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" Style="color: #ff9800;" />
+                                </div>
+                                <MudText Typo="Typo.caption" Style="color: #999;">
+                                    Appraisals requiring your self-assessment
+                                </MudText>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudCard Style="border-left: 4px solid #1976d2;" OnClick="ShowPendingApprovalAppraisals" Class="cursor-pointer">
+                        <MudCardContent>
+                            <MudStack Spacing="3">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <div>
+                                        <MudText Typo="Typo.body2" Style="color: #666;">Pending My Approval</MudText>
+                                        <MudText Typo="Typo.h5" Style="color: #1976d2; font-weight: 600;">@summary.AppraisalsForMyApproval</MudText>
+                                    </div>
+                                    <MudIcon Icon="@Icons.Material.Filled.SupervisorAccount" Size="Size.Large" Style="color: #1976d2;" />
+                                </div>
+                                <MudText Typo="Typo.caption" Style="color: #999;">
+                                    Appraisals awaiting your review as appraiser
+                                </MudText>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            </MudGrid>
+
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <MudPaper Elevation="1" Class="pa-8" Style="text-align: center;">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+                    <MudText Typo="Typo.h6" Class="mt-4" Style="color: #00286E;">Loading performance appraisals...</MudText>
+                </MudPaper>
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                    <MudAlertTitle>Error</MudAlertTitle>
+                    @errorMessage
+                </MudAlert>
+            }
+            else if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+                    <MudAlertTitle>Success</MudAlertTitle>
+                    @successMessage
+                </MudAlert>
+            }
+
+            <!-- Appraisals Table -->
+            @if (appraisals.Any())
+            {
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853; margin-bottom: 20px">
+                    <MudTable Items="@FilteredAppraisals"
+                              Hover="true"
+                              Breakpoint="Breakpoint.Sm"
+                              Dense="true"
+                              Striped="true"
+                              Style="border-radius: 12px;">
+                        <ToolBarContent>
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%; padding: 8px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Filled.FilterList" Style="color: #00286E;" />
+                                    <MudText Typo="Typo.h6" Style="font-weight: 600; color: #00286E;">Performance Appraisals</MudText>
+                                    <MudChip T="string" Style="background-color: #D4A853; color: white;" Size="Size.Small">@appraisals.Count appraisals</MudChip>
+                                </MudStack>
+
+                                <MudStack Row="true" Spacing="2">
+                                    <MudTextField @bind-Value="searchTerm"
+                                                  Placeholder="Search appraisals..."
+                                                  Adornment="Adornment.Start"
+                                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                                  IconSize="Size.Medium"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  DebounceInterval="300"
+                                                  Style="min-width: 300px;"
+                                                  Class="mt-0">
+                                    </MudTextField>
+
+                                    <MudSelect @bind-Value="filter.Status"
+                                               Placeholder="Status"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Status</MudSelectItem>
+                                        @foreach (var status in appraisalStatusList)
+                                        {
+                                            <MudSelectItem Value="@status">@GetStatusDisplayText(status)</MudSelectItem>
+                                        }
+                                    </MudSelect>
+
+                                    <MudSelect @bind-Value="filter.AppraisalType"
+                                               Placeholder="Appraisal Type"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Clearable="true"
+                                               Style="min-width: 150px;"
+                                               Class="mt-0">
+                                        <MudSelectItem Value="@((string)null)">All Types</MudSelectItem>
+                                        @foreach (var type in appraisalTypes)
+                                        {
+                                            <MudSelectItem Value="@type">@type</MudSelectItem>
+                                        }
+                                    </MudSelect>
+
+                                    <MudTooltip Text="Clear Filters">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                                       Style="color: #666; border: 1px solid #666;"
+                                                       OnClick="ClearFilters" />
+                                    </MudTooltip>
+
+                                    <MudTooltip Text="Refresh">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                                       Style="color: #00286E; border: 1px solid #00286E;"
+                                                       OnClick="RefreshList" />
+                                    </MudTooltip>
+                                </MudStack>
+                            </MudStack>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh>Appraisal No</MudTh>
+                            <MudTh>Employee</MudTh>
+                            <MudTh>Appraiser</MudTh>
+                            <MudTh>Period</MudTh>
+                            <MudTh>Type</MudTh>
+                            <MudTh>Created</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Score</MudTh>
+                            <MudTh Style="text-align: center;">Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="appraisal">
+                            <MudTd DataLabel="Appraisal No">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">@appraisal.AppraisalNo</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Employee">
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@appraisal.AppraiseeName</MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">@appraisal.EmployeeNo</MudText>
+                                </MudStack>
+                            </MudTd>
+                            <MudTd DataLabel="Appraiser">
+                                @if (!string.IsNullOrEmpty(appraisal.AppraiserName))
+                                {
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body2">@appraisal.AppraiserName</MudText>
+                                        <MudText Typo="Typo.caption" Style="color: #666;">@appraisal.AppraiserNo</MudText>
+                                    </MudStack>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Style="color: #999;">Not assigned</MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Period">@appraisal.AppraisalPeriod</MudTd>
+                            <MudTd DataLabel="Type">
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #D4A853; color: white;">@appraisal.AppraisalType</MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Created">
+                                <MudText Typo="Typo.body2">@appraisal.CreatedDate.ToString("dd MMM yyyy")</MudText>
+                                <MudText Typo="Typo.caption" Style="color: #999;">@GetTimeAgo(appraisal.CreatedDate)</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                @GetStatusChip(appraisal.Status)
+                            </MudTd>
+                            <MudTd DataLabel="Score">
+                                @if (appraisal.Status == AppraisalStatus.COMPLETED || appraisal.Status == AppraisalStatus.AGREED)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Style="@GetScoreStyle(appraisal.OverallRating ?? 0)">
+                                        @(appraisal.OverallRating?.ToString("0.0") ?? "0.0")%
+                                    </MudChip>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">
+                                        @appraisal.PerformanceCategory
+                                    </MudText>
+                                }
+                                else if (appraisal.Status == AppraisalStatus.APPRAISED)
+                                {
+                                    <MudText Typo="Typo.body2">@appraisal.TotalScoreSupervisor.ToString("0.0")</MudText>
+                                }
+                                else if (appraisal.Status == AppraisalStatus.SUBMITTED)
+                                {
+                                    <MudText Typo="Typo.body2">@appraisal.TotalScoreEmployee.ToString("0.0")</MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Actions" Style="text-align: center;">
+                                <MudStack Row="true" Spacing="1">
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Style="color: #00286E;"
+                                                       OnClick="@(() => ViewAppraisal(appraisal))" />
+                                    </MudTooltip>
+
+                                    @if (appraisal.Status == AppraisalStatus.OPEN && appraisal.EmployeeNo == currentEmployeeNo)
+                                    {
+                                        <MudTooltip Text="Edit Appraisal">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                           Size="Size.Small"
+                                                           Style="color: #D4A853;"
+                                                           OnClick="@(() => EditAppraisal(appraisal))" />
+                                        </MudTooltip>
+                                        
+                                        <MudTooltip Text="Submit for Assessment">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Send"
+                                                           Size="Size.Small"
+                                                           Style="color: #1976d2;"
+                                                           OnClick="@(() => SubmitAppraisalForAssessment(appraisal))" />
+                                        </MudTooltip>
+                                    }
+                                    
+                                    @if (appraisal.Status == AppraisalStatus.SUBMITTED && appraisal.AppraiserNo == currentEmployeeNo)
+                                    {
+                                        <MudTooltip Text="Appraise Now">
+                                            <MudIconButton Icon="@Icons.Material.Filled.RateReview"
+                                                           Size="Size.Small"
+                                                           Style="color: #1976d2;"
+                                                           OnClick="@(() => AppraiseNow(appraisal))" />
+                                        </MudTooltip>
+                                    }
+                                    
+                                    @if (appraisal.Status == AppraisalStatus.APPRAISED && appraisal.EmployeeNo == currentEmployeeNo)
+                                    {
+                                        <MudTooltip Text="Agree on Appraisal">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Handshake"
+                                                           Size="Size.Small"
+                                                           Style="color: #4caf50;"
+                                                           OnClick="@(() => AgreeOnAppraisal(appraisal))" />
+                                        </MudTooltip>
+                                    }
+                                    
+                                    @if (appraisal.Status == AppraisalStatus.AGREED && appraisal.AppraiserNo == currentEmployeeNo)
+                                    {
+                                        <MudTooltip Text="Complete Appraisal">
+                                            <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                                           Size="Size.Small"
+                                                           Style="color: #4caf50;"
+                                                           OnClick="@(() => CompleteAppraisal(appraisal))" />
+                                        </MudTooltip>
+                                    }
+                                    
+                                    @if (appraisal.Status == AppraisalStatus.OPEN || appraisal.Status == AppraisalStatus.IN_PROGRESS)
+                                    {
+                                        <MudTooltip Text="Delete Appraisal">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Size="Size.Small"
+                                                           Style="color: #f44336;"
+                                                           OnClick="@(() => ConfirmDeleteAppraisal(appraisal))" />
+                                        </MudTooltip>
+                                    }
+                                </MudStack>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <div style="text-align: center; padding: 60px 20px;">
+                                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No appraisals found</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #999;">Try adjusting your search criteria or create a new appraisal</MudText>
+                            </div>
+                        </NoRecordsContent>
+                        <PagerContent>
+                            <MudTablePager PageSizeOptions="@(new int[] {10, 25, 50})" />
+                        </PagerContent>
+                    </MudTable>
+                </MudPaper>
+            }
+            else if (!loading)
+            {
+                <MudPaper Elevation="1" Class="pa-8" Style="text-align: center;">
+                    <MudIcon Icon="@Icons.Material.Filled.Assessment" Size="Size.Large" Style="color: #ccc; margin-bottom: 16px;" />
+                    <MudText Typo="Typo.h6" Style="color: #666; margin-bottom: 8px;">No performance appraisals found</MudText>
+                    <MudText Typo="Typo.body2" Style="color: #999;">
+                        @if (HasActiveFilters)
+                        {
+                            <span>No appraisals match your current filters. <MudButton Variant="Variant.Text" OnClick="ClearFilters" Style="text-transform: none;">Clear filters</MudButton> to see all appraisals.</span>
+                        }
+                        else
+                        {
+                            <span>Click "New Appraisal" to create your first performance appraisal</span>
+                        }
+                    </MudText>
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool loading = false;
+    private bool exporting = false;
+    private bool creating = false;
+    private bool drawerOpen = false;
+
+    private string currentEmployeeNo = string.Empty;
+    private string currentEmployeeName = string.Empty;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = string.Empty;
+
+    private List<Appraisal> appraisals = new();
+    private List<PerformanceTarget> eligibleTargets = new();
+    private AppraisalSummary summary = new();
+    private AppraisalFilter filter = new();
+    private List<string> appraisalTypes = new();
+    private List<string> appraisalPeriods = new();
+    private List<string> appraisalStatusList = new();
+
+    private List<Appraisal> FilteredAppraisals => GetFilteredAppraisals();
+    private bool HasActiveFilters => !string.IsNullOrEmpty(filter.Status) ||
+                                     !string.IsNullOrEmpty(filter.AppraisalType) ||
+                                     !string.IsNullOrEmpty(filter.AppraisalPeriod) ||
+                                     !string.IsNullOrEmpty(searchTerm);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+            currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+
+            if (string.IsNullOrEmpty(currentEmployeeNo))
+            {
+                errorMessage = "Employee number not found. Please log in again.";
+                return;
+            }
+
+            Console.WriteLine($"🔍 Current User - Name: {currentEmployeeName}, EmployeeNo: {currentEmployeeNo}");
+
+            loading = true;
+            StateHasChanged();
+
+            await LoadMasterData();
+            await LoadAppraisals();
+            await LoadSummary();
+            await LoadEligibleTargets();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error initializing page: {ex.Message}";
+            Console.WriteLine($"❌ Error in OnInitializedAsync: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMasterData()
+    {
+        try
+        {
+            appraisalTypes = await AppraisalService.GetAppraisalTypesAsync();
+            appraisalPeriods = await PerformanceTargetService.GetAppraisalPeriodsAsync();
+
+            // Define appraisal status list - use the constants from Models
+            appraisalStatusList = new List<string>
+            {
+                AppraisalStatus.OPEN,
+                AppraisalStatus.IN_PROGRESS,
+                AppraisalStatus.SUBMITTED,
+                AppraisalStatus.APPRAISED,
+                AppraisalStatus.AGREED,
+                AppraisalStatus.COMPLETED
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading master data: {ex}");
+        }
+    }
+
+    private async Task LoadAppraisals()
+    {
+        try
+        {
+            Console.WriteLine("🔍 Loading performance appraisals...");
+            appraisals = await AppraisalService.GetAppraisalsAsync(filter);
+            Console.WriteLine($"✅ Loaded {appraisals.Count} appraisals");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load appraisals: {ex.Message}";
+            Console.WriteLine($"❌ Error loading appraisals: {ex}");
+            appraisals = new List<Appraisal>();
+        }
+    }
+
+    private async Task LoadSummary()
+    {
+        try
+        {
+            summary = await AppraisalService.GetAppraisalSummaryAsync(currentEmployeeNo, currentEmployeeNo);
+            Console.WriteLine($"🔍 Summary - Total: {summary.TotalAppraisals}, Open: {summary.OpenAppraisals}, Pending Approval: {summary.AppraisalsForMyApproval}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading summary: {ex}");
+        }
+    }
+
+    private async Task LoadEligibleTargets()
+    {
+        try
+        {
+            eligibleTargets = await AppraisalService.GetEligibleTargetsForAppraisalAsync(currentEmployeeNo);
+            Console.WriteLine($"✅ Loaded {eligibleTargets.Count} eligible targets for appraisal");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading eligible targets: {ex}");
+            eligibleTargets = new List<PerformanceTarget>();
+        }
+    }
+
+    private List<Appraisal> GetFilteredAppraisals()
+    {
+        var filtered = appraisals.AsEnumerable();
+
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            var searchTermLower = searchTerm.ToLower();
+            filtered = filtered.Where(a =>
+                a.AppraisalNo.ToLower().Contains(searchTermLower) ||
+                a.AppraiseeName.ToLower().Contains(searchTermLower) ||
+                a.AppraiserName.ToLower().Contains(searchTermLower) ||
+                a.EmployeeNo.ToLower().Contains(searchTermLower));
+        }
+
+        if (!string.IsNullOrEmpty(filter.Status))
+        {
+            filtered = filtered.Where(a => a.Status == filter.Status);
+        }
+
+        if (!string.IsNullOrEmpty(filter.AppraisalType))
+        {
+            filtered = filtered.Where(a => a.AppraisalType == filter.AppraisalType);
+        }
+
+        if (!string.IsNullOrEmpty(filter.AppraisalPeriod))
+        {
+            filtered = filtered.Where(a => a.AppraisalPeriod == filter.AppraisalPeriod);
+        }
+
+        return filtered.OrderByDescending(a => a.CreatedDate).ToList();
+    }
+
+    private string GetStatusDisplayText(string status)
+    {
+        return status switch
+        {
+            AppraisalStatus.OPEN => "Open",
+            AppraisalStatus.IN_PROGRESS => "In Progress",
+            AppraisalStatus.SUBMITTED => "Submitted",
+            AppraisalStatus.APPRAISED => "Appraised",
+            AppraisalStatus.AGREED => "Agreed",
+            AppraisalStatus.COMPLETED => "Completed",
+            _ => status
+        };
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon, text) = status switch
+        {
+            AppraisalStatus.OPEN => ("background-color: #ff9800; color: white;", Icons.Material.Filled.Edit, "Open"),
+            AppraisalStatus.IN_PROGRESS => ("background-color: #ffb74d; color: white;", Icons.Material.Filled.HourglassEmpty, "In Progress"),
+            AppraisalStatus.SUBMITTED => ("background-color: #1976d2; color: white;", Icons.Material.Filled.Send, "Submitted"),
+            AppraisalStatus.APPRAISED => ("background-color: #9c27b0; color: white;", Icons.Material.Filled.RateReview, "Appraised"),
+            AppraisalStatus.AGREED => ("background-color: #4caf50; color: white;", Icons.Material.Filled.Handshake, "Agreed"),
+            AppraisalStatus.COMPLETED => ("background-color: #2e7d32; color: white;", Icons.Material.Filled.CheckCircle, "Completed"),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help, status ?? "Unknown")
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@text</MudChip>;
+    }
+
+    private string GetScoreStyle(decimal score)
+    {
+        return score switch
+        {
+            >= 90 => "background-color: #4caf50; color: white;",
+            >= 80 => "background-color: #8bc34a; color: white;",
+            >= 70 => "background-color: #cddc39; color: #333;",
+            >= 60 => "background-color: #ff9800; color: white;",
+            _ => "background-color: #f44336; color: white;"
+        };
+    }
+
+    private string GetTimeAgo(DateTime date)
+    {
+        var timeSpan = DateTime.Now - date;
+
+        if (timeSpan.TotalDays > 365)
+            return $"{(int)(timeSpan.TotalDays / 365)} year(s) ago";
+        if (timeSpan.TotalDays > 30)
+            return $"{(int)(timeSpan.TotalDays / 30)} month(s) ago";
+        if (timeSpan.TotalDays > 1)
+            return $"{(int)timeSpan.TotalDays} day(s) ago";
+        if (timeSpan.TotalHours > 1)
+            return $"{(int)timeSpan.TotalHours} hour(s) ago";
+        if (timeSpan.TotalMinutes > 1)
+            return $"{(int)timeSpan.TotalMinutes} minute(s) ago";
+
+        return "Just now";
+    }
+
+    // Drawer methods
+    private async Task OpenCreateDrawer()
+    {
+        await LoadEligibleTargets();
+        drawerOpen = true;
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+    }
+
+    private void NavigateToTargets()
+    {
+        Navigation.NavigateTo("/performance-targets");
+    }
+
+    private async Task CreateAppraisalFromTarget(PerformanceTarget target)
+    {
+        try
+        {
+            creating = true;
+            StateHasChanged();
+
+            var appraisal = await AppraisalService.CreateAppraisalFromTargetAsync(target.ObjectiveNo ?? "");
+            if (appraisal != null)
+            {
+                Snackbar.Add($"Appraisal {appraisal.AppraisalNo} created successfully!", Severity.Success);
+                CloseDrawer();
+                
+                // Open the appraisal for editing
+                await EditAppraisal(appraisal);
+                
+                // Refresh data
+                await LoadAppraisals();
+                await LoadSummary();
+            }
+            else
+            {
+                Snackbar.Add("Failed to create appraisal from target", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating appraisal: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            creating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ViewAppraisal(Appraisal appraisal)
+    {
+        try
+        {
+            var fullAppraisal = await AppraisalService.GetAppraisalAsync(appraisal.AppraisalNo);
+            if (fullAppraisal != null)
+            {
+                var parameters = new DialogParameters
+                {
+                    { "Appraisal", fullAppraisal },
+                    { "CurrentEmployeeNo", currentEmployeeNo }
+                };
+
+                var options = new DialogOptions
+                {
+                    MaxWidth = MaxWidth.ExtraLarge,
+                    FullWidth = true,
+                    CloseButton = true
+                };
+
+                await DialogService.ShowAsync<AppraisalDetailsDialog>("Appraisal Details", parameters, options);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error viewing appraisal: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task EditAppraisal(Appraisal appraisal)
+    {
+        try
+        {
+            var fullAppraisal = await AppraisalService.GetAppraisalAsync(appraisal.AppraisalNo);
+            if (fullAppraisal != null)
+            {
+                var parameters = new DialogParameters
+                {
+                    { "Appraisal", fullAppraisal },
+                    { "CurrentEmployeeNo", currentEmployeeNo }
+                };
+
+                var options = new DialogOptions
+                {
+                    MaxWidth = MaxWidth.ExtraLarge,
+                    FullWidth = true,
+                    CloseButton = true
+                };
+
+                var dialog = await DialogService.ShowAsync<AppraisalEditDialog>("Edit Appraisal", parameters, options);
+                var result = await dialog.Result;
+
+                if (!result.Canceled)
+                {
+                    // Refresh data
+                    await LoadAppraisals();
+                    await LoadSummary();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error editing appraisal: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SubmitAppraisalForAssessment(Appraisal appraisal)
+    {
+        try
+        {
+            var confirmed = await DialogService.ShowMessageBox(
+                "Submit for Assessment",
+                $"Are you sure you want to submit appraisal '{appraisal.AppraisalNo}' for assessment? Once submitted, you cannot make changes.",
+                yesText: "Submit",
+                cancelText: "Cancel");
+
+            if (confirmed == true)
+            {
+                var result = await AppraisalService.SubmitAppraisalAsync(appraisal.AppraisalNo);
+
+                if (result.StartsWith("Success"))
+                {
+                    Snackbar.Add("Appraisal submitted for assessment successfully!", Severity.Success);
+                    await LoadAppraisals();
+                    await LoadSummary();
+                }
+                else
+                {
+                    Snackbar.Add(result, Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error submitting appraisal: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AppraiseNow(Appraisal appraisal)
+    {
+        try
+        {
+            var fullAppraisal = await AppraisalService.GetAppraisalAsync(appraisal.AppraisalNo);
+            if (fullAppraisal != null)
+            {
+                var parameters = new DialogParameters
+                {
+                    { "Appraisal", fullAppraisal },
+                    { "CurrentEmployeeNo", currentEmployeeNo },
+                    { "IsSupervisor", true }
+                };
+
+                var options = new DialogOptions
+                {
+                    MaxWidth = MaxWidth.ExtraLarge,
+                    FullWidth = true,
+                    CloseButton = true
+                };
+
+                var dialog = await DialogService.ShowAsync<AppraisalAssessmentDialog>("Supervisor Assessment", parameters, options);
+                var result = await dialog.Result;
+
+                if (!result.Canceled)
+                {
+                    // Refresh data
+                    await LoadAppraisals();
+                    await LoadSummary();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error appraising: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AgreeOnAppraisal(Appraisal appraisal)
+    {
+        try
+        {
+            var fullAppraisal = await AppraisalService.GetAppraisalAsync(appraisal.AppraisalNo);
+            if (fullAppraisal != null)
+            {
+                var parameters = new DialogParameters
+                {
+                    { "Appraisal", fullAppraisal },
+                    { "CurrentEmployeeNo", currentEmployeeNo }
+                };
+
+                var options = new DialogOptions
+                {
+                    MaxWidth = MaxWidth.ExtraLarge,
+                    FullWidth = true,
+                    CloseButton = true
+                };
+
+                var dialog = await DialogService.ShowAsync<AppraisalAgreementDialog>("Agree on Appraisal", parameters, options);
+                var result = await dialog.Result;
+
+                if (!result.Canceled)
+                {
+                    // Refresh data
+                    await LoadAppraisals();
+                    await LoadSummary();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error agreeing on appraisal: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CompleteAppraisal(Appraisal appraisal)
+    {
+        try
+        {
+            var confirmed = await DialogService.ShowMessageBox(
+                "Complete Appraisal",
+                $"Are you sure you want to complete appraisal '{appraisal.AppraisalNo}'? This will finalize the appraisal process.",
+                yesText: "Complete",
+                cancelText: "Cancel");
+
+            if (confirmed == true)
+            {
+                var result = await AppraisalService.CompleteAppraisalAsync(appraisal.AppraisalNo);
+
+                if (result.StartsWith("Success"))
+                {
+                    Snackbar.Add("Appraisal completed successfully!", Severity.Success);
+                    await LoadAppraisals();
+                    await LoadSummary();
+                }
+                else
+                {
+                    Snackbar.Add(result, Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error completing appraisal: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ConfirmDeleteAppraisal(Appraisal appraisal)
+    {
+        try
+        {
+            var confirmed = await DialogService.ShowMessageBox(
+                "Delete Appraisal",
+                $"Are you sure you want to delete appraisal '{appraisal.AppraisalNo}'? This action cannot be undone.",
+                yesText: "Delete",
+                cancelText: "Cancel");
+
+            if (confirmed == true)
+            {
+                var result = await AppraisalService.DeleteAppraisalAsync(appraisal.AppraisalNo);
+
+                if (result.StartsWith("Success"))
+                {
+                    Snackbar.Add($"Appraisal {appraisal.AppraisalNo} deleted successfully", Severity.Success);
+                    await LoadAppraisals();
+                    await LoadSummary();
+                }
+                else
+                {
+                    Snackbar.Add(result, Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting appraisal: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void FilterByStatus(string status)
+    {
+        filter.Status = status;
+        StateHasChanged();
+    }
+
+    private async Task ShowMyPendingAppraisals()
+    {
+        filter.Status = AppraisalStatus.OPEN;
+        filter.EmployeeNo = currentEmployeeNo;
+        await LoadAppraisals();
+        StateHasChanged();
+    }
+
+    private async Task ShowPendingApprovalAppraisals()
+    {
+        filter.Status = AppraisalStatus.SUBMITTED;
+        filter.AppraiserNo = currentEmployeeNo;
+        await LoadAppraisals();
+        StateHasChanged();
+    }
+
+    private async Task ClearFilters()
+    {
+        filter = new AppraisalFilter();
+        searchTerm = string.Empty;
+        await LoadAppraisals();
+        StateHasChanged();
+    }
+
+    private async Task RefreshList()
+    {
+        await LoadAppraisals();
+        Snackbar.Add("List refreshed successfully", Severity.Success);
+    }
+
+    private async Task ExportToExcel()
+    {
+        try
+        {
+            exporting = true;
+            StateHasChanged();
+
+            // Implement actual export logic here
+            await Task.Delay(500); // Simulate export
+
+            var filteredCount = FilteredAppraisals.Count;
+            Snackbar.Add($"Exported {filteredCount} appraisals to Excel", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error exporting to Excel: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            exporting = false;
+            StateHasChanged();
+        }
+    }
+}

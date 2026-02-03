@@ -1,0 +1,102 @@
+﻿@using KNQASelfService.Models
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Style="color: #00286E; margin-bottom: 20px;">
+            <MudIcon Icon="@Icons.Material.Filled.Add" Style="margin-right: 8px;" />
+            Create New Appraisal
+        </MudText>
+        
+        @if (EligibleTargets.Any())
+        {
+            <MudText Typo="Typo.body2" Style="color: #666; margin-bottom: 16px;">
+                Select a performance target to create appraisal from:
+            </MudText>
+            
+            <MudList T="PerformanceTarget">
+                @foreach (var target in EligibleTargets)
+                {
+                    <MudListItem T="PerformanceTarget" Value="@target" OnClick="@(() => CreateAppraisalFromTarget(target))">
+                        <MudListItemContent>
+                            <MudListItemText>
+                                <MudText Typo="Typo.body1">@target.ObjectiveNo</MudText>
+                                <MudText Typo="Typo.body2" Style="color: #666;">@target.AppraisalPeriod - @target.AppraisalCategory</MudText>
+                                <MudText Typo="Typo.caption" Style="color: #999;">
+                                    @target.TargetLines.Count target lines • Created: @target.CreatedDate?.ToString("dd/MM/yyyy")
+                                </MudText>
+                            </MudListItemText>
+                        </MudListItemContent>
+                        <MudListItemIcon>
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowForward" />
+                        </MudListItemIcon>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+        else
+        {
+            <div style="text-align: center; padding: 40px;">
+                <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Large" Style="color: #ccc; margin-bottom: 16px;" />
+                <MudText Typo="Typo.h6" Style="color: #666; margin-bottom: 8px;">No eligible performance targets found</MudText>
+                <MudText Typo="Typo.body2" Style="color: #999;">
+                    You need an approved performance target to create an appraisal. 
+                    Please create and approve a performance target first.
+                </MudText>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+
+    [Parameter]
+    public List<PerformanceTarget> EligibleTargets { get; set; } = new();
+
+    [Parameter]
+    public string CurrentEmployeeNo { get; set; } = string.Empty;
+
+    [Inject]
+    private IAppraisalService AppraisalService { get; set; } = null!;
+
+
+    private bool creating = false;
+
+    private async Task CreateAppraisalFromTarget(PerformanceTarget target)
+    {
+        try
+        {
+            creating = true;
+
+            var appraisal = await AppraisalService.CreateAppraisalFromTargetAsync(target.ObjectiveNo ?? "");
+            if (appraisal != null)
+            {
+                Snackbar.Add($"Appraisal created successfully!", Severity.Success);
+
+            }
+            else
+            {
+                Snackbar.Add("Failed to create appraisal from target", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating appraisal: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            creating = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        
+    }
+}

@@ -1,0 +1,168 @@
+﻿@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IFixedAssetService FixedAssetService
+
+<MudDialog MaxWidth="MaxWidth.Large" FullWidth="true">
+    <DialogContent>
+        <MudGrid Spacing="3">
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                    <MudIcon Icon="@Icons.Material.Filled.Inventory" Style="margin-right: 8px;" />
+                    My Assets
+                </MudText>
+                <MudText Typo="Typo.caption" Style="color: #666;">Assets assigned to you</MudText>
+            </MudItem>
+
+            @if (loading)
+            {
+                <MudItem xs="12" Style="text-align: center; padding: 40px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </MudItem>
+            }
+            else if (!assets.Any())
+            {
+                <MudItem xs="12" Style="text-align: center; padding: 40px;">
+                    <MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                    <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No assets assigned to you</MudText>
+                    <MudText Typo="Typo.body2" Style="color: #999;">
+                        Contact your administrator to get assets assigned.
+                    </MudText>
+                </MudItem>
+            }
+            else
+            {
+                <MudItem xs="12">
+                    <MudTable Items="@assets" Hover="true" Striped="true" Dense="true">
+                        <HeaderContent>
+                            <MudTh>Asset No</MudTh>
+                            <MudTh>Description</MudTh>
+                            <MudTh>Asset Class</MudTh>
+                            <MudTh>Tag No</MudTh>
+                            <MudTh>Serial No</MudTh>
+                            <MudTh>Location</MudTh>
+                            <MudTh>Condition</MudTh>
+                            <MudTh>Status</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="asset">
+                            <MudTd DataLabel="Asset No">
+                                <MudText Typo="Typo.body2">@asset.No</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Description">
+                                <MudText Typo="Typo.body2">@asset.Description</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Asset Class">
+                                <MudChip T="string" Size="Size.Small" Style="@GetAssetClassStyle(asset.FixedAssetClassCode)">
+                                    @asset.FixedAssetClassCode
+                                </MudChip>
+                            </MudTd>
+                            <MudTd DataLabel="Tag No">
+                                <MudText Typo="Typo.body2">@asset.TagNo</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Serial No">
+                                <MudText Typo="Typo.body2">@asset.SerialNo</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Location">
+                                <MudText Typo="Typo.body2">@asset.Location</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Condition">
+                                @GetConditionChip(asset.Condition)
+                            </MudTd>
+                            <MudTd DataLabel="Status">
+                                @GetStatusChip(asset.Active)
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+        @if (assets.Any())
+        {
+            <MudButton Variant="Variant.Filled"
+                       Style="background-color: #D4A853; color: white;"
+                       OnClick="RequestRepair">
+                Request Repair
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+    [Parameter] public string? EmployeeNo { get; set; }
+
+    private List<FixedAsset> assets = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(EmployeeNo))
+        {
+            await LoadAssets();
+        }
+        loading = false;
+    }
+
+    private async Task LoadAssets()
+    {
+        try
+        {
+            assets = await FixedAssetService.GetAssetsByEmployeeAsync(EmployeeNo!);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading assets: {ex.Message}");
+        }
+    }
+
+    private void Close()
+    {
+      
+    }
+
+    private void RequestRepair()
+    {
+        
+    }
+
+    private string GetAssetClassStyle(string? assetClass)
+    {
+        var (backgroundColor, textColor) = (assetClass ?? "").ToLower() switch
+        {
+            var x when x.Contains("computer") => ("#e3f2fd", "#1565c0"),
+            var x when x.Contains("furniture") => ("#fff8e1", "#ff8f00"),
+            var x when x.Contains("vehicle") => ("#f3e5f5", "#7b1fa2"),
+            _ => ("#f5f5f5", "#666666")
+        };
+
+        return $"background-color: {backgroundColor}; color: {textColor}; font-weight: 600;";
+    }
+
+    private RenderFragment GetConditionChip(string? condition)
+    {
+        var (colorStyle, text) = condition switch
+        {
+            AssetCondition.EXCELLENT => ("background-color: #388e3c; color: white;", "Excellent"),
+            AssetCondition.GOOD => ("background-color: #1976d2; color: white;", "Good"),
+            AssetCondition.FAIR => ("background-color: #ffb300; color: white;", "Fair"),
+            AssetCondition.POOR => ("background-color: #f57c00; color: white;", "Poor"),
+            AssetCondition.DAMAGED => ("background-color: #d32f2f; color: white;", "Damaged"),
+            _ => ("background-color: #999; color: white;", "Unknown")
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle">@text</MudChip>;
+    }
+
+    private RenderFragment GetStatusChip(bool active)
+    {
+        var (colorStyle, text) = active
+            ? ("background-color: #4caf50; color: white;", "Active")
+            : ("background-color: #999; color: white;", "Inactive");
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle">@text</MudChip>;
+    }
+}

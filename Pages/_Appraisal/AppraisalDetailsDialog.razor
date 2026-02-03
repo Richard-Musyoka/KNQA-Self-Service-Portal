@@ -1,0 +1,534 @@
+﻿@using KNQASelfService.Models
+@using MudBlazor
+
+<MudDialog MaxWidth="MaxWidth.ExtraLarge" FullWidth="true">
+    <DialogContent>
+        @if (Appraisal != null)
+        {
+            <MudGrid Spacing="3">
+                <!-- Header -->
+                <MudItem xs="12">
+                    <MudText Typo="Typo.h5" Style="color: #00286E; font-weight: 600;">
+                        <MudIcon Icon="@Icons.Material.Filled.Assessment" Style="margin-right: 8px;" />
+                        Appraisal Details: @Appraisal.AppraisalNo
+                    </MudText>
+                    <div style="display: flex; align-items: center; gap: 16px; margin-top: 8px;">
+                        <MudChip T="string" Size="Size.Small" Style="@GetStatusStyle(Appraisal.Status)">
+                            @Appraisal.StatusDisplay
+                        </MudChip>
+                        <MudText Typo="Typo.caption" Style="color: #666;">
+                            Created: @Appraisal.CreatedDate.ToString("dd/MM/yyyy")
+                        </MudText>
+                        @if (Appraisal.SubmittedDate.HasValue)
+                        {
+                            <MudText Typo="Typo.caption" Style="color: #666;">
+                                Submitted: @Appraisal.SubmittedDate?.ToString("dd/MM/yyyy")
+                            </MudText>
+                        }
+                        @if (Appraisal.CompletedDate.HasValue)
+                        {
+                            <MudText Typo="Typo.caption" Style="color: #666;">
+                                Completed: @Appraisal.CompletedDate?.ToString("dd/MM/yyyy")
+                            </MudText>
+                        }
+                    </div>
+                </MudItem>
+
+                <!-- Basic Information -->
+                <MudItem xs="12">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" md="4">
+                            <MudPaper Elevation="0" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 4px;">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Appraisal Period</MudText>
+                                <MudText Typo="Typo.body1" Style="font-weight: 600;">@Appraisal.AppraisalPeriod</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudPaper Elevation="0" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 4px;">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Appraisal Type</MudText>
+                                <MudText Typo="Typo.body1" Style="font-weight: 600;">@Appraisal.AppraisalType</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudPaper Elevation="0" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 4px;">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Performance Category</MudText>
+                                <MudChip T="string" Size="Size.Small" Style="@GetPerformanceCategoryStyle(Appraisal.PerformanceCategory)">
+                                    @Appraisal.PerformanceCategory
+                                </MudChip>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudItem>
+
+                <!-- People Information -->
+                <MudItem xs="12">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" md="6">
+                            <MudPaper Elevation="1" Class="pa-3" Style="background-color: #e8f5e9; border-radius: 8px;">
+                                <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="margin-right: 8px;" />
+                                    Appraisee Details
+                                </MudText>
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Name</MudText>
+                                        <MudText Typo="Typo.body2">@Appraisal.AppraiseeName</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Employee No</MudText>
+                                        <MudText Typo="Typo.body2">@Appraisal.EmployeeNo</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Job Title</MudText>
+                                        <MudText Typo="Typo.body2">@Appraisal.AppraiseeJobTitle</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Department</MudText>
+                                        <MudText Typo="Typo.body2">@Appraisal.DepartmentName</MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudPaper Elevation="1" Class="pa-3" Style="background-color: #fff8e1; border-radius: 8px;">
+                                <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                                    <MudIcon Icon="@Icons.Material.Filled.SupervisorAccount" Size="Size.Small" Style="margin-right: 8px;" />
+                                    Appraiser Details
+                                </MudText>
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Name</MudText>
+                                        <MudText Typo="Typo.body2">@Appraisal.AppraiserName</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Employee No</MudText>
+                                        <MudText Typo="Typo.body2">@Appraisal.AppraiserNo</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Job Title</MudText>
+                                        <MudText Typo="Typo.body2">@Appraisal.AppraiserJobTitle</MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudItem>
+
+                <!-- Overall Scores -->
+                <MudItem xs="12">
+                    <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f3e5f5; border-radius: 8px;">
+                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Score" Size="Size.Small" Style="margin-right: 8px;" />
+                            Overall Scores
+                        </MudText>
+                        
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" md="3">
+                                <div style="text-align: center; padding: 16px; background-color: #e3f2fd; border-radius: 4px;">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Employee Score</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: #1976d2; font-weight: 600;">
+                                        @Appraisal.TotalScoreEmployee.ToString("0.0")
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">
+                                        @((Appraisal.TotalMaximumScore > 0 ? (Appraisal.TotalScoreEmployee / Appraisal.TotalMaximumScore * 100) : 0).ToString("0.0"))%
+                                    </MudText>
+                                </div>
+                            </MudItem>
+                            <MudItem xs="12" md="3">
+                                <div style="text-align: center; padding: 16px; background-color: #f3e5f5; border-radius: 4px;">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Supervisor Score</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: #9c27b0; font-weight: 600;">
+                                        @Appraisal.TotalScoreSupervisor.ToString("0.0")
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">
+                                        @((Appraisal.TotalMaximumScore > 0 ? (Appraisal.TotalScoreSupervisor / Appraisal.TotalMaximumScore * 100) : 0).ToString("0.0"))%
+                                    </MudText>
+                                </div>
+                            </MudItem>
+                            <MudItem xs="12" md="3">
+                                <div style="text-align: center; padding: 16px; background-color: #e8f5e9; border-radius: 4px;">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Agreed Score</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: #4caf50; font-weight: 600;">
+                                        @Appraisal.TotalScoreAgreed.ToString("0.0")
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">
+                                        @((Appraisal.TotalMaximumScore > 0 ? (Appraisal.TotalScoreAgreed / Appraisal.TotalMaximumScore * 100) : 0).ToString("0.0"))%
+                                    </MudText>
+                                </div>
+                            </MudItem>
+                            <MudItem xs="12" md="3">
+                                <div style="text-align: center; padding: 16px; background-color: #fff8e1; border-radius: 4px;">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Overall Rating</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: #ff9800; font-weight: 600;">
+                                        @(Appraisal.OverallRating?.ToString("0.0") ?? "0.0")%
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">
+                                        @Appraisal.PerformanceCategory
+                                    </MudText>
+                                </div>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Performance Assessment Details -->
+                @if (Appraisal.AppraisalLines.Any())
+                {
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #fff; border-radius: 8px;">
+                            <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 16px;">
+                                <MudIcon Icon="@Icons.Material.Filled.List" Size="Size.Small" Style="margin-right: 8px;" />
+                                Performance Assessment Details
+                            </MudText>
+                            
+                            <MudTable Items="@Appraisal.AppraisalLines" Hover="true" Dense="true">
+                                <HeaderContent>
+                                    <MudTh>KPA</MudTh>
+                                    <MudTh>KPI</MudTh>
+                                    <MudTh>Target</MudTh>
+                                    <MudTh>Weight</MudTh>
+                                    <MudTh>Employee Score</MudTh>
+                                    <MudTh>Supervisor Score</MudTh>
+                                    <MudTh>Agreed Score</MudTh>
+                                    <MudTh>Remarks</MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="line">
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2">@line.KeyPerformanceArea</MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.caption">@line.KeyPerformanceIndicator</MudText>
+                                        <MudText Typo="Typo.caption" Style="color: #666;">@line.PerformanceMeasure</MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2">@line.Target</MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">@line.MaximumWeighting%</MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <div style="text-align: center;">
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #1976d2;">
+                                                @line.EmployeeScore%
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Style="color: #666;">
+                                                @line.EmployeeWeightedScore.ToString("0.0")
+                                            </MudText>
+                                        </div>
+                                    </MudTd>
+                                    <MudTd>
+                                        <div style="text-align: center;">
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #9c27b0;">
+                                                @line.SupervisorScore%
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Style="color: #666;">
+                                                @line.SupervisorWeightedScore.ToString("0.0")
+                                            </MudText>
+                                        </div>
+                                    </MudTd>
+                                    <MudTd>
+                                        <div style="text-align: center;">
+                                            <MudText Typo="Typo.body2" Style="font-weight: 600; color: #4caf50;">
+                                                @line.AgreedScore%
+                                            </MudText>
+                                            <MudText Typo="Typo.caption" Style="color: #666;">
+                                                @line.AgreedWeightedScore.ToString("0.0")
+                                            </MudText>
+                                        </div>
+                                    </MudTd>
+                                    <MudTd>
+                                        @if (!string.IsNullOrEmpty(line.ProgressAssessmentRemarks) || 
+                                             !string.IsNullOrEmpty(line.EmployeeRemarks) || 
+                                             !string.IsNullOrEmpty(line.SupervisorRemarks) || 
+                                             !string.IsNullOrEmpty(line.AgreedRemarks))
+                                        {
+                                            <MudExpansionPanel Text="View Remarks">
+                                                @if (!string.IsNullOrEmpty(line.ProgressAssessmentRemarks))
+                                                {
+                                                    <div style="margin-bottom: 8px;">
+                                                        <MudText Typo="Typo.caption" Style="color: #666; font-weight: 600;">Progress:</MudText>
+                                                        <MudText Typo="Typo.body2">@line.ProgressAssessmentRemarks</MudText>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(line.EmployeeRemarks))
+                                                {
+                                                    <div style="margin-bottom: 8px;">
+                                                        <MudText Typo="Typo.caption" Style="color: #666; font-weight: 600;">Employee:</MudText>
+                                                        <MudText Typo="Typo.body2">@line.EmployeeRemarks</MudText>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(line.SupervisorRemarks))
+                                                {
+                                                    <div style="margin-bottom: 8px;">
+                                                        <MudText Typo="Typo.caption" Style="color: #666; font-weight: 600;">Supervisor:</MudText>
+                                                        <MudText Typo="Typo.body2">@line.SupervisorRemarks</MudText>
+                                                    </div>
+                                                }
+                                                @if (!string.IsNullOrEmpty(line.AgreedRemarks))
+                                                {
+                                                    <div>
+                                                        <MudText Typo="Typo.caption" Style="color: #666; font-weight: 600;">Agreed:</MudText>
+                                                        <MudText Typo="Typo.body2">@line.AgreedRemarks</MudText>
+                                                    </div>
+                                                }
+                                            </MudExpansionPanel>
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.caption" Style="color: #999;">No remarks</MudText>
+                                        }
+                                    </MudTd>
+                                </RowTemplate>
+                                <FooterContent>
+                                    <MudTd ColSpan="3">
+                                        <MudText Typo="Typo.body2" Style="text-align: right; font-weight: 600;">
+                                            Total:
+                                        </MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                                            @Appraisal.TotalMaximumScore%
+                                        </MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: #1976d2;">
+                                            @Appraisal.TotalScoreEmployee.ToString("0.0")
+                                        </MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: #9c27b0;">
+                                            @Appraisal.TotalScoreSupervisor.ToString("0.0")
+                                        </MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: #4caf50;">
+                                            @Appraisal.TotalScoreAgreed.ToString("0.0")
+                                        </MudText>
+                                    </MudTd>
+                                    <MudTd></MudTd>
+                                </FooterContent>
+                            </MudTable>
+                        </MudPaper>
+                    </MudItem>
+                }
+
+                <!-- Comments Section -->
+                <MudItem xs="12">
+                    <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 8px;">
+                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Comment" Size="Size.Small" Style="margin-right: 8px;" />
+                            Comments
+                        </MudText>
+                        
+                        <MudGrid Spacing="3">
+                            @if (!string.IsNullOrEmpty(Appraisal.EmployeeComments))
+                            {
+                                <MudItem xs="12">
+                                    <MudCard>
+                                        <MudCardHeader>
+                                            <MudCardHeaderAvatar>
+                                                <MudIcon Icon="@Icons.Material.Filled.Person" />
+                                            </MudCardHeaderAvatar>
+                                            <MudCardHeaderContent>
+                                                <MudText Typo="Typo.subtitle1">Employee Comments</MudText>
+                                                <MudText Typo="Typo.caption" Style="color: #666;">
+                                                    @Appraisal.SubmittedDate?.ToString("dd/MM/yyyy HH:mm")
+                                                </MudText>
+                                            </MudCardHeaderContent>
+                                        </MudCardHeader>
+                                        <MudCardContent>
+                                            <MudText Typo="Typo.body2">@Appraisal.EmployeeComments</MudText>
+                                        </MudCardContent>
+                                    </MudCard>
+                                </MudItem>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(Appraisal.AppraiserComments))
+                            {
+                                <MudItem xs="12">
+                                    <MudCard>
+                                        <MudCardHeader>
+                                            <MudCardHeaderAvatar>
+                                                <MudIcon Icon="@Icons.Material.Filled.SupervisorAccount" />
+                                            </MudCardHeaderAvatar>
+                                            <MudCardHeaderContent>
+                                                <MudText Typo="Typo.subtitle1">Supervisor Comments</MudText>
+                                                <MudText Typo="Typo.caption" Style="color: #666;">
+                                                    @Appraisal.AppraisedDate?.ToString("dd/MM/yyyy HH:mm")
+                                                </MudText>
+                                            </MudCardHeaderContent>
+                                        </MudCardHeader>
+                                        <MudCardContent>
+                                            <MudText Typo="Typo.body2">@Appraisal.AppraiserComments</MudText>
+                                        </MudCardContent>
+                                    </MudCard>
+                                </MudItem>
+                            }
+                            
+                            @if (!string.IsNullOrEmpty(Appraisal.AgreedComments))
+                            {
+                                <MudItem xs="12">
+                                    <MudCard>
+                                        <MudCardHeader>
+                                            <MudCardHeaderAvatar>
+                                                <MudIcon Icon="@Icons.Material.Filled.Handshake" />
+                                            </MudCardHeaderAvatar>
+                                            <MudCardHeaderContent>
+                                                <MudText Typo="Typo.subtitle1">Agreed Comments</MudText>
+                                                <MudText Typo="Typo.caption" Style="color: #666;">
+                                                    @Appraisal.AgreedDate?.ToString("dd/MM/yyyy HH:mm")
+                                                </MudText>
+                                            </MudCardHeaderContent>
+                                        </MudCardHeader>
+                                        <MudCardContent>
+                                            <MudText Typo="Typo.body2">@Appraisal.AgreedComments</MudText>
+                                        </MudCardContent>
+                                    </MudCard>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Action History -->
+                <MudItem xs="12">
+                    <MudPaper Elevation="1" Class="pa-3" Style="background-color: #fff8e1; border-radius: 8px;">
+                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Style="margin-right: 8px;" />
+                            Appraisal Timeline
+                        </MudText>
+                        
+                        <MudTimeline Position="TimelinePosition.Alternate">
+                            <MudTimelineItem Color="Color.Info">
+                                <MudTimelineItemOppositeContent>
+                                    @Appraisal.CreatedDate.ToString("dd/MM/yyyy HH:mm")
+                                </MudTimelineItemOppositeContent>
+                                <MudTimelineItemContent>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">Appraisal Created</MudText>
+                                    <MudText Typo="Typo.caption">Appraisal document created in system</MudText>
+                                </MudTimelineItemContent>
+                            </MudTimelineItem>
+                            
+                            @if (Appraisal.SubmittedDate.HasValue)
+                            {
+                                <MudTimelineItem Color="Color.Primary">
+                                    <MudTimelineItemOppositeContent>
+                                        @Appraisal.SubmittedDate?.ToString("dd/MM/yyyy HH:mm")
+                                    </MudTimelineItemOppositeContent>
+                                    <MudTimelineItemContent>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">Submitted for Assessment</MudText>
+                                        <MudText Typo="Typo.caption">Employee completed self-assessment</MudText>
+                                    </MudTimelineItemContent>
+                                </MudTimelineItem>
+                            }
+                            
+                            @if (Appraisal.AppraisedDate.HasValue)
+                            {
+                                <MudTimelineItem Color="Color.Secondary">
+                                    <MudTimelineItemOppositeContent>
+                                        @Appraisal.AppraisedDate?.ToString("dd/MM/yyyy HH:mm")
+                                    </MudTimelineItemOppositeContent>
+                                    <MudTimelineItemContent>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">Supervisor Appraised</MudText>
+                                        <MudText Typo="Typo.caption">Supervisor completed assessment in NAV</MudText>
+                                    </MudTimelineItemContent>
+                                </MudTimelineItem>
+                            }
+                            
+                            @if (Appraisal.AgreedDate.HasValue)
+                            {
+                                <MudTimelineItem Color="Color.Success">
+                                    <MudTimelineItemOppositeContent>
+                                        @Appraisal.AgreedDate?.ToString("dd/MM/yyyy HH:mm")
+                                    </MudTimelineItemOppositeContent>
+                                    <MudTimelineItemContent>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">Agreement Reached</MudText>
+                                        <MudText Typo="Typo.caption">Final scores agreed upon</MudText>
+                                    </MudTimelineItemContent>
+                                </MudTimelineItem>
+                            }
+                            
+                            @if (Appraisal.CompletedDate.HasValue)
+                            {
+                                <MudTimelineItem Color="Color.Success">
+                                    <MudTimelineItemOppositeContent>
+                                        @Appraisal.CompletedDate?.ToString("dd/MM/yyyy HH:mm")
+                                    </MudTimelineItemOppositeContent>
+                                    <MudTimelineItemContent>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">Appraisal Completed</MudText>
+                                        <MudText Typo="Typo.caption">Appraisal process finalized</MudText>
+                                    </MudTimelineItemContent>
+                                </MudTimelineItem>
+                            }
+                        </MudTimeline>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+        else
+        {
+            <div style="text-align: center; padding: 40px;">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Large" Style="font-size: 4rem; color: #f44336;" />
+                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No appraisal information available</MudText>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+        @if (Appraisal != null && (Appraisal.Status == AppraisalStatus.COMPLETED || Appraisal.Status == AppraisalStatus.AGREED))
+        {
+            <MudButton Variant="Variant.Outlined"
+                       Style="border-color: #00286E; color: #00286E;"
+                       StartIcon="@Icons.Material.Filled.Download"
+                       OnClick="ExportToPdf">
+                Export as PDF
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter] public Appraisal? Appraisal { get; set; }
+
+    private void Close()
+    {
+    
+    }
+
+    private async Task ExportToPdf()
+    {
+        // This would call the service to generate PDF
+        // For now, just close
+        Close();
+    }
+
+    private string GetStatusStyle(string status)
+    {
+        return status switch
+        {
+            AppraisalStatus.OPEN => "background-color: #ff9800; color: white;",
+            AppraisalStatus.IN_PROGRESS => "background-color: #ffb74d; color: white;",
+            AppraisalStatus.SUBMITTED => "background-color: #1976d2; color: white;",
+            AppraisalStatus.APPRAISED => "background-color: #9c27b0; color: white;",
+            AppraisalStatus.AGREED => "background-color: #4caf50; color: white;",
+            AppraisalStatus.COMPLETED => "background-color: #2e7d32; color: white;",
+            _ => "background-color: #999; color: white;"
+        };
+    }
+
+    private string GetPerformanceCategoryStyle(string? category)
+    {
+        return category switch
+        {
+            "EXCELLENT" => "background-color: #4caf50; color: white;",
+            "VERY_GOOD" => "background-color: #8bc34a; color: white;",
+            "GOOD" => "background-color: #cddc39; color: #333;",
+            "FAIR" => "background-color: #ff9800; color: white;",
+            "POOR" => "background-color: #f44336; color: white;",
+            _ => "background-color: #999; color: white;"
+        };
+    }
+}

@@ -1,0 +1,417 @@
+﻿@using KNQASelfService.Models
+@using MudBlazor
+@using System.Linq
+
+<MudDialog MaxWidth="MaxWidth.ExtraLarge" FullWidth="true">
+    <DialogContent>
+        <MudText Typo="Typo.h5" Style="color: #00286E; margin-bottom: 20px;">
+            <MudIcon Icon="@Icons.Material.Filled.Assessment" Style="margin-right: 10px;" />
+            Appraisal Assessment
+        </MudText>
+
+        @if (Appraisal != null)
+        {
+            <!-- Appraisal Header -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background-color: #f5f5f5; border-radius: 8px;">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.body2" Style="color: #666;">Appraisal Number:</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight: 600;">@Appraisal.AppraisalNo</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.body2" Style="color: #666;">Period:</MudText>
+                        <MudText Typo="Typo.body1">@Appraisal.AppraisalPeriod</MudText>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2" Style="color: #666;">Employee:</MudText>
+                        <MudText Typo="Typo.body1">@Appraisal.AppraiseeName (@Appraisal.EmployeeNo)</MudText>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.body2" Style="color: #666;">Submitted Date:</MudText>
+                        <MudText Typo="Typo.body1">@Appraisal.SubmittedDate?.ToString("dd/MM/yyyy HH:mm")</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Assessment Guidelines -->
+            <MudAlert Severity="Severity.Info" Variant="Variant.Filled" Class="mb-4">
+                <MudAlertTitle>Assessment Guidelines</MudAlertTitle>
+                <ul style="margin: 0; padding-left: 20px;">
+                    <li>Review the employee's self-assessment scores and comments</li>
+                    <li>Provide your assessment scores for each KPI (0-100%)</li>
+                    <li>Add comments explaining your assessment</li>
+                    <li>Consider performance against targets, quality of work, and initiative</li>
+                </ul>
+            </MudAlert>
+
+            <!-- Score Summary -->
+            <MudGrid Spacing="3" Class="mb-4">
+                <MudItem xs="12" md="4">
+                    <MudCard Style="background: linear-gradient(135deg, #1976d2 0%, #2196f3 100%); color: white;">
+                        <MudCardContent>
+                            <MudText Typo="Typo.body2">Employee's Self-Assessment</MudText>
+                            <MudText Typo="Typo.h4" Style="font-weight: 600;">@Appraisal.TotalScoreEmployee.ToString("0.0")</MudText>
+                            <MudText Typo="Typo.caption">out of @Appraisal.TotalMaximumScore</MudText>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudCard Style="background: linear-gradient(135deg, #9c27b0 0%, #ba68c8 100%); color: white;">
+                        <MudCardContent>
+                            <MudText Typo="Typo.body2">Your Assessment</MudText>
+                            <MudText Typo="Typo.h4" Style="font-weight: 600;">@totalSupervisorScore.ToString("0.0")</MudText>
+                            <MudText Typo="Typo.caption">out of @Appraisal.TotalMaximumScore</MudText>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudCard Style="background: linear-gradient(135deg, #4caf50 0%, #8bc34a 100%); color: white;">
+                        <MudCardContent>
+                            <MudText Typo="Typo.body2">Difference</MudText>
+                            <MudText Typo="Typo.h4" Style="font-weight: 600;">
+                                @((totalSupervisorScore - Appraisal.TotalScoreEmployee).ToString("+0.0;-0.0;0.0"))
+                            </MudText>
+                            <MudText Typo="Typo.caption">
+                                @(((totalSupervisorScore - Appraisal.TotalScoreEmployee) / Appraisal.TotalMaximumScore * 100).ToString("+0.0;-0.0;0.0"))%
+                            </MudText>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            </MudGrid>
+
+            <!-- Employee Comments -->
+            @if (!string.IsNullOrEmpty(Appraisal.EmployeeComments))
+            {
+                <MudPaper Elevation="1" Class="mb-4 pa-4">
+                    <MudText Typo="Typo.subtitle2" Style="color: #1976d2; margin-bottom: 8px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Comment" Size="Size.Small" Style="margin-right: 8px;" />
+                        Employee's Self-Assessment Comments
+                    </MudText>
+                    <MudPaper Elevation="0" Class="pa-3" Style="background-color: #e3f2fd;">
+                        <MudText Typo="Typo.body2">@Appraisal.EmployeeComments</MudText>
+                    </MudPaper>
+                </MudPaper>
+            }
+
+            <!-- Assessment Table -->
+            @if (Appraisal.AppraisalLines != null && Appraisal.AppraisalLines.Any())
+            {
+                <MudPaper Elevation="1" Class="mb-4 pa-4">
+                    <MudText Typo="Typo.subtitle2" Style="color: #00286E; margin-bottom: 16px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Score" Size="Size.Small" Style="margin-right: 8px;" />
+                        KPI Assessment
+                    </MudText>
+
+                    <MudTable Items="@Appraisal.AppraisalLines" Hover="true" Dense="true" Class="mb-4">
+                        <HeaderContent>
+                            <MudTh>KPI</MudTh>
+                            <MudTh>Employee Score</MudTh>
+                            <MudTh>Your Assessment</MudTh>
+                            <MudTh>Difference</MudTh>
+                            <MudTh>Assessment Comments</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="line">
+                            <MudTd>
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@line.KeyPerformanceIndicator</MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">@line.KeyPerformanceArea</MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #999;">Target: @line.Target</MudText>
+                                </div>
+                            </MudTd>
+                            <MudTd>
+                                <div style="text-align: center;">
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600; color: #1976d2;">
+                                        @line.EmployeeScore%
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">
+                                        @line.EmployeeWeightedScore.ToString("0.0")
+                                    </MudText>
+                                </div>
+                            </MudTd>
+                            <MudTd>
+                                <MudNumericField T="decimal"
+                                                 @bind-Value="line.SupervisorScore"
+                                                 Variant="Variant.Outlined"
+                                                 Min="0"
+                                                 Max="100"
+                                                 Step="5"
+                                                 Immediate="true"
+                                                 OnBlur="@(() => CalculateScores())"
+                                                 Style="width: 120px;">
+                                    <Adornment>%</Adornment>
+                                </MudNumericField>
+                                <MudText Typo="Typo.caption" Style="color: #666; margin-top: 4px;">
+                                    Weighted: @line.SupervisorWeightedScore.ToString("0.0")
+                                </MudText>
+                            </MudTd>
+                            <MudTd>
+                                @{
+                                    var difference = line.SupervisorScore - line.EmployeeScore;
+                                    var color = difference > 0 ? Color.Success : difference < 0 ? Color.Error : Color.Default;
+                                }
+                                <MudText Typo="Typo.body2" Color="@color" Style="font-weight: 600;">
+                                    @difference.ToString("+0.0;-0.0;0.0")
+                                </MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudTextField @bind-Value="line.SupervisorRemarks"
+                                              Variant="Variant.Outlined"
+                                              Lines="1"
+                                              MultiLine="true"
+                                              Immediate="true"
+                                              Placeholder="Add assessment comments..." />
+                            </MudTd>
+                        </RowTemplate>
+                        <FooterContent>
+                            <MudTd>
+                                <MudText Typo="Typo.body2" Style="text-align: right; font-weight: 600;">Total:</MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudText Typo="Typo.body2" Style="font-weight: 600; color: #1976d2;">
+                                    @Appraisal.TotalScoreEmployee.ToString("0.0")
+                                </MudText>
+                            </MudTd>
+                            <MudTd>
+                                <MudText Typo="Typo.body2" Style="font-weight: 600; color: #9c27b0;">
+                                    @totalSupervisorScore.ToString("0.0")
+                                </MudText>
+                            </MudTd>
+                            <MudTd>
+                                @{
+                                    var totalDifference = totalSupervisorScore - Appraisal.TotalScoreEmployee;
+                                    var totalColor = totalDifference > 0 ? Color.Success : totalDifference < 0 ? Color.Error : Color.Default;
+                                }
+                                <MudText Typo="Typo.body2" Color="@totalColor" Style="font-weight: 600;">
+                                    @totalDifference.ToString("+0.0;-0.0;0.0")
+                                </MudText>
+                            </MudTd>
+                            <MudTd></MudTd>
+                        </FooterContent>
+                    </MudTable>
+
+                    <!-- Performance Category -->
+                    <div class="mt-4">
+                        <MudText Typo="Typo.subtitle2" Style="color: #00286E; margin-bottom: 8px;">
+                            Performance Category
+                        </MudText>
+                        <MudSelect T="string"
+                                   @bind-Value="selectedPerformanceCategory"
+                                   Label="Select Performance Category"
+                                   Variant="Variant.Outlined"
+                                   Style="width: 300px;">
+                            <MudSelectItem T="string" Value='"EXCELLENT"'>Excellent</MudSelectItem>
+                            <MudSelectItem T="string" Value='"VERY_GOOD"'>Very Good</MudSelectItem>
+                            <MudSelectItem T="string" Value='"GOOD"'>Good</MudSelectItem>
+                            <MudSelectItem T="string" Value='"FAIR"'>Fair</MudSelectItem>
+                            <MudSelectItem T="string" Value='"POOR"'>Poor</MudSelectItem>
+                        </MudSelect>
+                    </div>
+                </MudPaper>
+            }
+
+            <!-- Supervisor Comments -->
+            <MudPaper Elevation="1" Class="mb-4 pa-4">
+                <MudText Typo="Typo.subtitle2" Style="color: #9c27b0; margin-bottom: 8px;">
+                    <MudIcon Icon="@Icons.Material.Filled.RateReview" Size="Size.Small" Style="margin-right: 8px;" />
+                    Your Overall Assessment Comments
+                </MudText>
+                <MudTextField @bind-Value="appraiserComments"
+                              Variant="Variant.Outlined"
+                              Lines="3"
+                              MultiLine="true"
+                              FullWidth="true"
+                              Placeholder="Provide your overall assessment comments, feedback, and recommendations..." />
+            </MudPaper>
+
+            <!-- Key Achievements -->
+            <MudPaper Elevation="1" Class="mb-4 pa-4">
+                <MudText Typo="Typo.subtitle2" Style="color: #4caf50; margin-bottom: 8px;">
+                    <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Style="margin-right: 8px;" />
+                    Key Achievements & Strengths
+                </MudText>
+                <MudTextField @bind-Value="keyAchievements"
+                              Variant="Variant.Outlined"
+                              Lines="2"
+                              MultiLine="true"
+                              FullWidth="true"
+                              Placeholder="List key achievements, strengths, and areas where employee excelled..." />
+            </MudPaper>
+
+            <!-- Development Areas -->
+            <MudPaper Elevation="1" Class="mb-4 pa-4">
+                <MudText Typo="Typo.subtitle2" Style="color: #ff9800; margin-bottom: 8px;">
+                    <MudIcon Icon="@Icons.Material.Filled.Insights" Size="Size.Small" Style="margin-right: 8px;" />
+                    Areas for Development
+                </MudText>
+                <MudTextField @bind-Value="developmentAreas"
+                              Variant="Variant.Outlined"
+                              Lines="2"
+                              MultiLine="true"
+                              FullWidth="true"
+                              Placeholder="Identify areas for improvement and development opportunities..." />
+            </MudPaper>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3">
+                    @errorMessage
+                </MudAlert>
+            }
+        }
+        else
+        {
+            <div style="text-align: center; padding: 40px;">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Large" Style="font-size: 4rem; color: #f44336;" />
+                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No appraisal information available</MudText>
+            </div>
+        }
+    </DialogContent>
+    
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">Cancel</MudButton>
+        <MudButton OnClick="@(async () => await SubmitAssessment())" 
+                   Variant="Variant.Filled" 
+                   Color="Color.Primary"
+                   Disabled="@(submitting || !IsFormValid())"
+                   EndIcon="@Icons.Material.Filled.Assessment">
+            @if (submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Inherit" />
+                <span class="ms-2">Submitting...</span>
+            }
+            else
+            {
+                <span>Submit Assessment</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter]
+    public Appraisal? Appraisal { get; set; }
+
+    [Inject]
+    private IAppraisalService AppraisalService { get; set; } = null!;
+
+
+    private decimal totalSupervisorScore = 0;
+    private string appraiserComments = string.Empty;
+    private string keyAchievements = string.Empty;
+    private string developmentAreas = string.Empty;
+    private string selectedPerformanceCategory = "GOOD";
+    private bool submitting = false;
+    private string? errorMessage;
+
+    protected override void OnInitialized()
+    {
+        if (Appraisal != null)
+        {
+            // Initialize supervisor comments if they exist
+            if (!string.IsNullOrEmpty(Appraisal.AppraiserComments))
+            {
+                appraiserComments = Appraisal.AppraiserComments;
+            }
+
+            // Initialize performance category if it exists
+            if (!string.IsNullOrEmpty(Appraisal.PerformanceCategory))
+            {
+                selectedPerformanceCategory = Appraisal.PerformanceCategory;
+            }
+
+            // Calculate initial scores
+            CalculateScores();
+        }
+    }
+
+    private void CalculateScores()
+    {
+        if (Appraisal == null || Appraisal.AppraisalLines == null)
+            return;
+
+        totalSupervisorScore = Appraisal.AppraisalLines.Sum(l => l.SupervisorWeightedScore);
+        StateHasChanged();
+    }
+
+    private bool IsFormValid()
+    {
+        if (Appraisal?.AppraisalLines == null)
+            return false;
+
+        // Check if all supervisor scores are provided
+        foreach (var line in Appraisal.AppraisalLines)
+        {
+            if (line.SupervisorScore == 0)
+                return false;
+        }
+
+        // Check if overall comments are provided
+        if (string.IsNullOrWhiteSpace(appraiserComments))
+            return false;
+
+        return true;
+    }
+
+    private async Task SubmitAssessment()
+    {
+        try
+        {
+            submitting = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            if (Appraisal == null)
+            {
+                errorMessage = "No appraisal data available";
+                return;
+            }
+
+            // Update performance category
+            Appraisal.PerformanceCategory = selectedPerformanceCategory;
+
+            // Prepare combined comments
+            var combinedComments = appraiserComments;
+            if (!string.IsNullOrEmpty(keyAchievements))
+            {
+                combinedComments += $"\n\nKey Achievements:\n{keyAchievements}";
+            }
+            if (!string.IsNullOrEmpty(developmentAreas))
+            {
+                combinedComments += $"\n\nAreas for Development:\n{developmentAreas}";
+            }
+
+            // Submit assessment
+            var result = await AppraisalService.AppraiseAsync(
+                Appraisal.AppraisalNo,
+                Appraisal.AppraisalLines.ToList(),
+                combinedComments);
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add("Assessment submitted successfully!", Severity.Success);
+            }
+            else
+            {
+                errorMessage = result;
+                Snackbar.Add(errorMessage, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error submitting assessment: {ex.Message}";
+            Snackbar.Add(errorMessage, Severity.Error);
+        }
+        finally
+        {
+            submitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+    }
+}

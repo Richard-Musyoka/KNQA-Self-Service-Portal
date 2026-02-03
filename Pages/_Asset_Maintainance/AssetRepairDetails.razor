@@ -1,0 +1,220 @@
+﻿@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IAssetRepairService AssetRepairService
+@inject IFixedAssetService FixedAssetService
+
+<MudDialog>
+    <DialogContent>
+        @if (Repair != null)
+        {
+            <MudGrid Spacing="3">
+                <!-- Header -->
+                <MudItem xs="12">
+                    <MudText Typo="Typo.h6" Style="color: #00286E; font-weight: 600;">
+                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Style="margin-right: 8px;" />
+                        Repair Request: @Repair.MaintenanceRefNo
+                    </MudText>
+                </MudItem>
+
+                <!-- Basic Info -->
+                <MudItem xs="12">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Reported Date</MudText>
+                            <MudText Typo="Typo.body2">@Repair.ReportedDate?.ToString("dd/MM/yyyy HH:mm")</MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Status</MudText>
+                            <MudChip T="string" Size="Size.Small" Style="@GetStatusStyle(Repair.MaintenanceStatus)">
+                                @Repair.MaintenanceStatus
+                            </MudChip>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Priority</MudText>
+                            <MudChip T="string" Size="Size.Small" Style="@GetPriorityStyle(Repair.RepairPriority)">
+                                @Repair.RepairPriority
+                            </MudChip>
+                        </MudItem>
+                        @if (Repair.CompletedDate.HasValue)
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Completed Date</MudText>
+                                <MudText Typo="Typo.body2">@Repair.CompletedDate?.ToString("dd/MM/yyyy HH:mm")</MudText>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudItem>
+
+                <!-- Requester Details -->
+                <MudItem xs="12">
+                    <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 8px;">
+                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                            Requester Details
+                        </MudText>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Employee</MudText>
+                                <MudText Typo="Typo.body2">@Repair.EmployeeName (@Repair.EmployeeNo)</MudText>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Department</MudText>
+                                <MudText Typo="Typo.body2">@Repair.Department</MudText>
+                            </MudItem>
+                            @if (!string.IsNullOrEmpty(Repair.JobTitle))
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Job Title</MudText>
+                                    <MudText Typo="Typo.body2">@Repair.JobTitle</MudText>
+                                </MudItem>
+                            }
+                            @if (!string.IsNullOrEmpty(Repair.SupervisorName))
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Supervisor</MudText>
+                                    <MudText Typo="Typo.body2">@Repair.SupervisorName</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Asset Details -->
+                <MudItem xs="12">
+                    <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 8px;">
+                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                            Asset Details
+                        </MudText>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Asset No</MudText>
+                                <MudText Typo="Typo.body2">@Repair.AssetNo</MudText>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Asset Name</MudText>
+                                <MudText Typo="Typo.body2">@Repair.AssetName</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Issue Details -->
+                <MudItem xs="12">
+                    <MudPaper Elevation="1" Class="pa-3" Style="background-color: #fff8e1; border-radius: 8px;">
+                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                            Issue Details
+                        </MudText>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Issue Description</MudText>
+                                <MudText Typo="Typo.body2">@Repair.MaintenanceIssue</MudText>
+                            </MudItem>
+                            @if (!string.IsNullOrEmpty(Repair.MaintenanceDetails))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption" Style="color: #666;">Maintenance Details</MudText>
+                                    <MudText Typo="Typo.body2">@Repair.MaintenanceDetails</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Repair Tracking -->
+                @if (!string.IsNullOrEmpty(Repair.AssignedTechnician) ||
+                            Repair.EstimatedCost.HasValue ||
+                            Repair.ActualCost.HasValue ||
+                            !string.IsNullOrEmpty(Repair.ResolutionDetails))
+                {
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #e8f5e9; border-radius: 8px;">
+                            <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                                Repair Tracking
+                            </MudText>
+                            <MudGrid Spacing="2">
+                                @if (!string.IsNullOrEmpty(Repair.AssignedTechnician))
+                                {
+                                    <MudItem xs="12" md="6">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Assigned Technician</MudText>
+                                        <MudText Typo="Typo.body2">@Repair.AssignedTechnician</MudText>
+                                    </MudItem>
+                                }
+                                @if (Repair.EstimatedCost.HasValue)
+                                {
+                                    <MudItem xs="12" md="6">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Estimated Cost</MudText>
+                                        <MudText Typo="Typo.body2">KES @Repair.EstimatedCost.Value.ToString("N2")</MudText>
+                                    </MudItem>
+                                }
+                                @if (Repair.ActualCost.HasValue)
+                                {
+                                    <MudItem xs="12" md="6">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Actual Cost</MudText>
+                                        <MudText Typo="Typo.body2">KES @Repair.ActualCost.Value.ToString("N2")</MudText>
+                                    </MudItem>
+                                }
+                                @if (!string.IsNullOrEmpty(Repair.ResolutionDetails))
+                                {
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.caption" Style="color: #666;">Resolution Details</MudText>
+                                        <MudText Typo="Typo.body2">@Repair.ResolutionDetails</MudText>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                }
+
+                <!-- Remarks -->
+                @if (!string.IsNullOrEmpty(Repair.Remarks))
+                {
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 8px;">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Remarks</MudText>
+                            <MudText Typo="Typo.body2">@Repair.Remarks</MudText>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+    [Parameter] public Models.AssetRepair? Repair { get; set; }
+
+    private void Cancel()
+    {
+
+    }
+
+    private string GetStatusStyle(string? status)
+    {
+        return status switch
+        {
+            RepairStatus.OPEN => "background-color: #f57c00; color: white;",
+            RepairStatus.IN_PROGRESS => "background-color: #1976d2; color: white;",
+            RepairStatus.COMPLETED => "background-color: #388e3c; color: white;",
+            RepairStatus.CANCELLED => "background-color: #d32f2f; color: white;",
+            RepairStatus.ON_HOLD => "background-color: #ffb300; color: white;",
+            _ => "background-color: #999; color: white;"
+        };
+    }
+
+    private string GetPriorityStyle(string? priority)
+    {
+        return priority switch
+        {
+            RepairPriority.CRITICAL => "background-color: #d32f2f; color: white;",
+            RepairPriority.HIGH => "background-color: #f57c00; color: white;",
+            RepairPriority.MEDIUM => "background-color: #1976d2; color: white;",
+            RepairPriority.LOW => "background-color: #388e3c; color: white;",
+            _ => "background-color: #999; color: white;"
+        };
+    }
+}

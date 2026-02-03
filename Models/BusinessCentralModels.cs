@@ -325,33 +325,43 @@ namespace KNQASelfService.Models
         public string EligibleStaff { get; set; }
     }
 
-    public class Employee
-{
-    [JsonProperty("No")]
-    public string No { get; set; }
+        public class Employee
+        {
+            [JsonProperty("No")]
+            public string No { get; set; } = string.Empty;
 
-    [JsonProperty("FullName")]
-    public string FullName { get; set; }
+            [JsonProperty("FullName")]
+            public string FullName { get; set; } = string.Empty;
 
-    [JsonProperty("First_Name")]
-    public string FirstName { get; set; }
+            [JsonProperty("First_Name")]
+            public string FirstName { get; set; } = string.Empty;
 
-    [JsonProperty("Last_Name")]
-    public string LastName { get; set; }
+            [JsonProperty("Last_Name")]
+            public string LastName { get; set; } = string.Empty;
 
-    [JsonProperty("Status")]
-    public string Status { get; set; }
+            [JsonProperty("Status")]
+            public string Status { get; set; } = string.Empty;
 
-    [JsonProperty("Job_Title")]
-    public string JobTitle { get; set; }
+            [JsonProperty("Job_Title")]
+            public string JobTitle { get; set; } = string.Empty;
 
-    [JsonProperty("Global_Dimension_1_Code")]
-    public string DepartmentCode { get; set; }
+            [JsonProperty("Global_Dimension_1_Code")]
+            public string DepartmentCode { get; set; } = string.Empty;
 
-    [JsonProperty("E_Mail")]
-    public string Email { get; set; }
+            [JsonProperty("E_Mail")]
+            public string Email { get; set; } = string.Empty;
 
-    // Helper property for display
-    public string DisplayName => $"{FullName} ({No})";
-}
+            // Add this property for Employment Date
+            [JsonProperty("Employment_Date")]
+            public DateTime? EmploymentDate { get; set; }
+
+            // Manager information
+            [JsonProperty("Reports_To_No")]
+            public string ManagerNo { get; set; } = string.Empty;
+
+            // Helper property for display
+            [JsonIgnore]
+            public string DisplayName => $"{FullName} ({No})";
+        }
+    
 }

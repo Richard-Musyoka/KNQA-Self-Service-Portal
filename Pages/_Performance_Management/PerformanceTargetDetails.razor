@@ -1,0 +1,340 @@
+﻿@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+
+<MudDialog MaxWidth="MaxWidth.Large" FullWidth="true">
+    <DialogContent>
+        @if (Target != null)
+        {
+            <MudGrid Spacing="3">
+                <!-- Header -->
+                <MudItem xs="12">
+                    <MudText Typo="Typo.h5" Style="color: #00286E; font-weight: 600;">
+                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Style="margin-right: 8px;" />
+                        Performance Target: @Target.ObjectiveNo
+                    </MudText>
+                    <MudText Typo="Typo.caption" Style="color: #666;">
+                        Created: @Target.CreatedDate?.ToString("dd/MM/yyyy HH:mm")
+                    </MudText>
+                </MudItem>
+
+                <!-- Basic Info -->
+                <MudItem xs="12">
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Status</MudText>
+                            <MudChip T="string" Size="Size.Small" Style="@GetStatusStyle(Target.Status)">
+                                @Target.Status
+                            </MudChip>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Appraisal Period</MudText>
+                            <MudText Typo="Typo.body2">@Target.AppraisalPeriod</MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudText Typo="Typo.caption" Style="color: #666;">Appraisal Category</MudText>
+                            <MudChip T="string" Size="Size.Small" Style="@GetCategoryStyle(Target.AppraisalCategory)">
+                                @GetCategoryText(Target.AppraisalCategory)
+                            </MudChip>
+                        </MudItem>
+                        @if (Target.SubmittedDate.HasValue)
+                        {
+                            <MudItem xs="12" md="4">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Submitted Date</MudText>
+                                <MudText Typo="Typo.body2">@Target.SubmittedDate?.ToString("dd/MM/yyyy HH:mm")</MudText>
+                            </MudItem>
+                        }
+                        @if (Target.ApprovedDate.HasValue)
+                        {
+                            <MudItem xs="12" md="4">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Approved Date</MudText>
+                                <MudText Typo="Typo.body2">@Target.ApprovedDate?.ToString("dd/MM/yyyy HH:mm")</MudText>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudItem>
+
+                <!-- Appraisee Details -->
+                <MudItem xs="12">
+                    <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 8px;">
+                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="margin-right: 8px;" />
+                            Appraisee Details
+                        </MudText>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Employee</MudText>
+                                <MudText Typo="Typo.body2">@Target.AppraiseeName (@Target.EmployeeNo)</MudText>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Job Title</MudText>
+                                <MudText Typo="Typo.body2">@Target.AppraiseeJobTitle</MudText>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Department</MudText>
+                                <MudText Typo="Typo.body2">@Target.DepartmentName (@Target.DepartmentCode)</MudText>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Appraisee ID</MudText>
+                                <MudText Typo="Typo.body2">@Target.AppraiseeID</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Appraiser Details -->
+                <MudItem xs="12">
+                    <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 8px;">
+                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                            <MudIcon Icon="@Icons.Material.Filled.SupervisorAccount" Size="Size.Small" Style="margin-right: 8px;" />
+                            Appraiser Details
+                        </MudText>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Appraiser</MudText>
+                                <MudText Typo="Typo.body2">@Target.AppraiserName (@Target.AppraiserNo)</MudText>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudText Typo="Typo.caption" Style="color: #666;">Job Title</MudText>
+                                <MudText Typo="Typo.body2">@Target.AppraiserJobTitle</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Performance Category -->
+                @if (!string.IsNullOrEmpty(Target.AgreedPerformanceCategory))
+                {
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #e8f5e9; border-radius: 8px;">
+                            <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Grade" Size="Size.Small" Style="margin-right: 8px;" />
+                                Agreed Performance Category
+                            </MudText>
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12">
+                                    <MudChip T="string" Size="Size.Medium" Style="@GetPerformanceCategoryStyle(Target.AgreedPerformanceCategory)">
+                                        @GetPerformanceCategoryText(Target.AgreedPerformanceCategory)
+                                    </MudChip>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                }
+
+                <!-- Performance Targets -->
+                @if (Target.TargetLines != null && Target.TargetLines.Any())
+                {
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f3e5f5; border-radius: 8px;">
+                            <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                                <MudIcon Icon="@Icons.Material.Filled.TrackChanges" Size="Size.Small" Style="margin-right: 8px;" />
+                                Performance Targets
+                            </MudText>
+                            
+                            <MudTable Items="@Target.TargetLines" Hover="true" Dense="true">
+                                <HeaderContent>
+                                    <MudTh>Key Performance Area</MudTh>
+                                    <MudTh>Key Performance Indicator</MudTh>
+                                    <MudTh>Performance Measure</MudTh>
+                                    <MudTh>Target</MudTh>
+                                    <MudTh>Weighting %</MudTh>
+                                    <MudTh>Timeline</MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="line">
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2">@line.KeyPerformanceArea</MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2">@line.KeyPerformanceIndicator</MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2">@line.PerformanceMeasure</MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2">@line.Target</MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">@line.Weighting%</MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2">@line.Timeline</MudText>
+                                    </MudTd>
+                                </RowTemplate>
+                                <FooterContent>
+                                    <MudTd ColSpan="4">
+                                        <MudText Typo="Typo.body2" Style="text-align: right; font-weight: 600;">
+                                            Total Weighting:
+                                        </MudText>
+                                    </MudTd>
+                                    <MudTd>
+                                        <MudText Typo="Typo.body2" Style="@GetTotalWeightingStyle(Target.TargetLines)">
+                                            @Target.TargetLines.Sum(t => t.Weighting)%
+                                        </MudText>
+                                    </MudTd>
+                                    <MudTd></MudTd>
+                                </FooterContent>
+                            </MudTable>
+
+                            <!-- Additional Information -->
+                            @if (Target.TargetLines.Any(l => !string.IsNullOrEmpty(l.ResourcesRequired) || !string.IsNullOrEmpty(l.SuccessCriteria) || !string.IsNullOrEmpty(l.Remarks)))
+                            {
+                                <div class="mt-4">
+                                    <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                                        Additional Information
+                                    </MudText>
+                                    @foreach (var line in Target.TargetLines.Where(l => !string.IsNullOrEmpty(l.ResourcesRequired) || !string.IsNullOrEmpty(l.SuccessCriteria) || !string.IsNullOrEmpty(l.Remarks)))
+                                    {
+                                        <MudPaper Elevation="0" Class="mb-2 pa-2" Style="background-color: #f8f9fa;">
+                                            <MudText Typo="Typo.caption" Style="color: #666; font-weight: 600;">@line.KeyPerformanceArea</MudText>
+                                            @if (!string.IsNullOrEmpty(line.ResourcesRequired))
+                                            {
+                                                <div class="mt-1">
+                                                    <MudText Typo="Typo.caption" Style="color: #666;">Resources Required:</MudText>
+                                                    <MudText Typo="Typo.body2">@line.ResourcesRequired</MudText>
+                                                </div>
+                                            }
+                                            @if (!string.IsNullOrEmpty(line.SuccessCriteria))
+                                            {
+                                                <div class="mt-1">
+                                                    <MudText Typo="Typo.caption" Style="color: #666;">Success Criteria:</MudText>
+                                                    <MudText Typo="Typo.body2">@line.SuccessCriteria</MudText>
+                                                </div>
+                                            }
+                                            @if (!string.IsNullOrEmpty(line.Remarks))
+                                            {
+                                                <div class="mt-1">
+                                                    <MudText Typo="Typo.caption" Style="color: #666;">Remarks:</MudText>
+                                                    <MudText Typo="Typo.body2">@line.Remarks</MudText>
+                                                </div>
+                                            }
+                                        </MudPaper>
+                                    }
+                                </div>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                }
+
+                <!-- Remarks -->
+                @if (!string.IsNullOrEmpty(Target.Remarks))
+                {
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 8px;">
+                            <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 8px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Notes" Size="Size.Small" Style="margin-right: 8px;" />
+                                Remarks
+                            </MudText>
+                            <MudText Typo="Typo.body2">@Target.Remarks</MudText>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            <div style="text-align: center; padding: 40px;">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Large" Style="font-size: 4rem; color: #f44336;" />
+                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No target information available</MudText>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+        @if (Target != null && Target.Status == AppraisalStatus.DRAFT)
+        {
+            <MudButton Variant="Variant.Filled"
+                       Style="background-color: #D4A853; color: white;"
+                       OnClick="EditTarget">
+                Edit Target
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+    [Parameter] public PerformanceTarget? Target { get; set; }
+
+    private void Close()
+    {
+       
+    }
+
+    private void EditTarget()
+    {
+    
+    }
+
+    private string GetStatusStyle(string? status)
+    {
+        return status switch
+        {
+            AppraisalStatus.DRAFT => "background-color: #ff9800; color: white;",
+            AppraisalStatus.PENDING_APPROVAL => "background-color: #1976d2; color: white;",
+            AppraisalStatus.APPROVED => "background-color: #4caf50; color: white;",
+            AppraisalStatus.REJECTED => "background-color: #f44336; color: white;",
+            AppraisalStatus.UNDER_REVIEW => "background-color: #9c27b0; color: white;",
+            _ => "background-color: #999; color: white;"
+        };
+    }
+
+    private string GetCategoryStyle(string? category)
+    {
+        return category switch
+        {
+            "TARGETSET" => "background-color: #1976d2; color: white;",
+            "MIDYEAR" => "background-color: #ff9800; color: white;",
+            "ANNUAL" => "background-color: #4caf50; color: white;",
+            "PROBATION" => "background-color: #9c27b0; color: white;",
+            "PROMOTION" => "background-color: #f44336; color: white;",
+            _ => "background-color: #999; color: white;"
+        };
+    }
+
+    private string GetCategoryText(string? category)
+    {
+        return category switch
+        {
+            "TARGETSET" => "Target Setting",
+            "MIDYEAR" => "Mid-Year Review",
+            "ANNUAL" => "Annual Review",
+            "PROBATION" => "Probation Review",
+            "PROMOTION" => "Promotion Review",
+            _ => category ?? "Unknown"
+        };
+    }
+    private string GetTotalWeightingStyle(List<TargetLine> targetLines)
+    {
+        var totalWeighting = targetLines.Sum(t => t.Weighting);
+        var color = totalWeighting == 100 ? "green" : "red";
+        return $"font-weight: 600; color: {color}";
+    }
+
+    private string GetPerformanceCategoryStyle(string? category)
+    {
+        return category switch
+        {
+            "EXCELLENT" => "background-color: #4caf50; color: white;",
+            "VERY_GOOD" => "background-color: #8bc34a; color: white;",
+            "GOOD" => "background-color: #cddc39; color: #333;",
+            "FAIR" => "background-color: #ff9800; color: white;",
+            "POOR" => "background-color: #f44336; color: white;",
+            _ => "background-color: #999; color: white;"
+        };
+    }
+
+    private string GetPerformanceCategoryText(string? category)
+    {
+        return category switch
+        {
+            "EXCELLENT" => "Excellent",
+            "VERY_GOOD" => "Very Good",
+            "GOOD" => "Good",
+            "FAIR" => "Fair",
+            "POOR" => "Poor",
+            _ => category ?? "Unknown"
+        };
+    }
+}

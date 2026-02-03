@@ -1,0 +1,499 @@
+﻿@page "/my-assets"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IFixedAssetService FixedAssetService
+@inject ICurrentUserService CurrentUserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>My Assets</PageTitle>
+
+<MudLayout>
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.Person" Style="color: #D4A853; font-size: 2rem;" />
+                            <div>
+                                <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                                    My Assets
+                                </MudText>
+                                @if (!string.IsNullOrEmpty(currentEmployeeName))
+                                {
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                        @currentEmployeeName (@currentEmployeeNo)
+                                    </MudText>
+                                }
+                            </div>
+                        </MudStack>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Error/Success Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => errorMessage = null"
+                          Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </div>
+            }
+            else
+            {
+                <!-- Summary Cards for My Assets -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Assets</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@myAssets.Count</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Active</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@myAssets.Count(a => a.Active)</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Total Value</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">
+                                        KES @totalValue.ToString("N0")
+                                    </MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Different Locations</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@locationCount</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+             
+
+                <!-- Assets Table -->
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853;">
+                    @if (!filteredAssets.Any())
+                    {
+                        <div style="text-align: center; padding: 60px 20px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                            <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No assets assigned to you</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #999; margin-bottom: 20px;">
+                                @(string.IsNullOrEmpty(searchTerm) 
+                                    ? "You don't have any assets assigned to you." 
+                                    : "No assets match your search criteria.")
+                            </MudText>
+                        
+                        </div>
+                    }
+                    else
+                    {
+                        <MudTable Items="@filteredAssets"
+                                  Hover="true"
+                                  Striped="true"
+                                  Breakpoint="Breakpoint.Sm"
+                                  Dense="true"
+                                  Loading="@loading"
+                                  LoadingProgressColor="Color.Primary">
+                            <HeaderContent>
+                                <MudTh>Asset No.</MudTh>
+                                <MudTh>Description</MudTh>
+                                <MudTh>Class</MudTh>
+                                <MudTh>Tag No.</MudTh>
+                                <MudTh>Serial No.</MudTh>
+                                <MudTh>Location</MudTh>
+                                <MudTh>Department</MudTh>
+                                <MudTh>Status</MudTh>
+                                <MudTh>Value (KES)</MudTh>
+                                <MudTh Style="text-align: center;">Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="asset">
+                                <MudTd DataLabel="Asset No.">
+                                    <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">
+                                        @asset.No
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Description">
+                                    <MudText Typo="Typo.body2" Style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        @asset.Description
+                                    </MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Class">
+                                    <MudChip T="string" Size="Size.Small" Style="@GetAssetClassStyle(asset.FixedAssetClassCode)">
+                                        @GetAssetClassAbbreviation(asset.FixedAssetClassCode)
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Tag No.">
+                                    <MudText Typo="Typo.body2">@asset.TagNo</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Serial No.">
+                                    <MudText Typo="Typo.body2">@asset.SerialNo</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Location">
+                                    <MudText Typo="Typo.body2">@asset.Location</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Department">
+                                    <MudText Typo="Typo.body2">@asset.DepartmentCode</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Status">
+                                    @GetStatusChip(asset.Active)
+                                </MudTd>
+                                <MudTd DataLabel="Value (KES)">
+                                    <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                                        @asset.BookValue.ToString("N0")
+                                    </MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Actions" Style="text-align: center;">
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Style="color: #00286E;"
+                                                       OnClick="@(() => ViewAssetDetails(asset))" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="Maintenance History">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Build"
+                                                       Size="Size.Small"
+                                                       Style="color: #D4A853;"
+                                                       OnClick="@(() => ViewMaintenanceHistory(asset))" />
+                                    </MudTooltip>
+                                </MudTd>
+                            </RowTemplate>
+                            <PagerContent>
+                                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50 }" />
+                            </PagerContent>
+                        </MudTable>
+                    }
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool loading = false;
+    private bool filtering = false;
+    private bool exporting = false;
+
+    private string currentEmployeeNo = string.Empty;
+    private string currentEmployeeName = string.Empty;
+    private string? errorMessage;
+    private string searchTerm = string.Empty;
+
+    private List<FixedAsset> myAssets = new();
+    private List<FixedAsset> filteredAssets = new();
+    private List<string> uniqueLocations = new();
+
+    private bool? statusFilter = null;
+    private string locationFilter = string.Empty;
+
+    private decimal totalValue = 0;
+    private int locationCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("🔍 MyAssets page initialized");
+
+        try
+        {
+            currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+            currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+
+            Console.WriteLine($"🔍 Current User - Name: {currentEmployeeName}, EmployeeNo: {currentEmployeeNo}");
+
+            if (string.IsNullOrEmpty(currentEmployeeNo))
+            {
+                errorMessage = "Employee number not found. Please log in again.";
+                loading = false;
+                StateHasChanged();
+                return;
+            }
+
+            await LoadMyAssets();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error in OnInitializedAsync: {ex}");
+            errorMessage = $"Error initializing page: {ex.Message}";
+            loading = false;
+        }
+    }
+
+    private async Task LoadMyAssets()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            Console.WriteLine($"🔍 Loading assets for employee: {currentEmployeeNo}");
+
+            myAssets = await FixedAssetService.GetAssetsByEmployeeAsync(currentEmployeeNo);
+            filteredAssets = myAssets.ToList();
+
+            // Calculate statistics
+            totalValue = myAssets.Sum(a => a.BookValue);
+            uniqueLocations = myAssets.Select(a => a.Location)
+                                     .Where(l => !string.IsNullOrEmpty(l))
+                                     .Distinct()
+                                     .OrderBy(l => l)
+                                     .ToList();
+            locationCount = uniqueLocations.Count;
+
+            Console.WriteLine($"🔍 Loaded {myAssets.Count} assets for employee {currentEmployeeNo}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load your assets: {ex.Message}";
+            Console.WriteLine($"❌ Error loading assets: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task FilterAssets()
+    {
+        try
+        {
+            filtering = true;
+            StateHasChanged();
+
+            // Apply filters
+            var filtered = myAssets.AsEnumerable();
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                var term = searchTerm.ToLower();
+                filtered = filtered.Where(a =>
+                    (a.No?.ToLower().Contains(term) ?? false) ||
+                    (a.Description?.ToLower().Contains(term) ?? false) ||
+                    (a.TagNo?.ToLower().Contains(term) ?? false) ||
+                    (a.SerialNo?.ToLower().Contains(term) ?? false) ||
+                    (a.FixedAssetClassCode?.ToLower().Contains(term) ?? false));
+            }
+
+            if (statusFilter.HasValue)
+            {
+                filtered = filtered.Where(a => a.Active == statusFilter.Value);
+            }
+
+            if (!string.IsNullOrEmpty(locationFilter))
+            {
+                filtered = filtered.Where(a => a.Location == locationFilter);
+            }
+
+            filteredAssets = filtered.ToList();
+
+            if (!string.IsNullOrEmpty(searchTerm) || statusFilter.HasValue || !string.IsNullOrEmpty(locationFilter))
+            {
+                Snackbar.Add($"Found {filteredAssets.Count} assets", Severity.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error filtering assets: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            filtering = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearFilters()
+    {
+        searchTerm = string.Empty;
+        statusFilter = null;
+        locationFilter = string.Empty;
+        filteredAssets = myAssets.ToList();
+        
+        Snackbar.Add("Filters cleared", Severity.Info);
+        StateHasChanged();
+    }
+
+    private async Task ViewAssetDetails(FixedAsset asset)
+    {
+        try
+        {
+            var parameters = new DialogParameters
+            {
+                { "Asset", asset }
+            };
+
+            var options = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Large,
+                FullWidth = true,
+                CloseButton = true,
+                CloseOnEscapeKey = true
+            };
+
+            var dialog = DialogService.Show<FixedAssetDetails>("Asset Details", parameters, options);
+            await dialog.Result;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error viewing asset details: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ViewMaintenanceHistory(FixedAsset asset)
+    {
+        try
+        {
+            var parameters = new DialogParameters
+            {
+                { "AssetNo", asset.No },
+                { "AssetDescription", asset.Description }
+            };
+
+            var options = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Medium,
+                FullWidth = true,
+                CloseButton = true,
+                CloseOnEscapeKey = true
+            };
+
+            var dialog = DialogService.Show<AssetMaintenanceHistory>("Maintenance History", parameters, options);
+            await dialog.Result;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error viewing maintenance history: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ExportMyAssets()
+    {
+        try
+        {
+            exporting = true;
+            StateHasChanged();
+
+            // Create a filter for current employee's assets
+            var filter = new FixedAssetFilter
+            {
+                ResponsibleEmployee = currentEmployeeNo,
+                OrderBy = "No asc"
+            };
+
+            var excelData = await FixedAssetService.ExportAssetsToExcelAsync(filter);
+            
+            if (excelData != null && excelData.Length > 0)
+            {
+                // Trigger download
+                var fileName = $"MyAssets_{currentEmployeeNo}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                await DownloadFile(fileName, excelData);
+                
+                Snackbar.Add($"Exported {myAssets.Count} assets to Excel", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to generate Excel file", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Export failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            exporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadFile(string fileName, byte[] data)
+    {
+        // This is a simplified version - in a real app, you'd use JS interop
+        // For now, we'll just show a success message
+        Console.WriteLine($"Would download file: {fileName}, size: {data.Length} bytes");
+    }
+
+    private string GetAssetClassStyle(string? assetClass)
+    {
+        var (backgroundColor, textColor) = (assetClass ?? "").ToLower() switch
+        {
+            var x when x.Contains("computer") => ("#e3f2fd", "#1565c0"),
+            var x when x.Contains("furniture") => ("#fff8e1", "#ff8f00"),
+            var x when x.Contains("vehicle") => ("#f3e5f5", "#7b1fa2"),
+            var x when x.Contains("software") => ("#e0f2f1", "#00695c"),
+            var x when x.Contains("machinery") => ("#fff3e0", "#ef6c00"),
+            var x when x.Contains("building") => ("#e8f5e9", "#2e7d32"),
+            var x when x.Contains("office") => ("#fce4ec", "#c2185b"),
+            _ => ("#f5f5f5", "#666666")
+        };
+
+        return $"background-color: {backgroundColor}; color: {textColor}; font-weight: 600;";
+    }
+
+    private string GetAssetClassAbbreviation(string? assetClass)
+    {
+        return (assetClass ?? "Other").ToLower() switch
+        {
+            var x when x.Contains("computer") => "COMP",
+            var x when x.Contains("furniture") => "FURN",
+            var x when x.Contains("vehicle") => "VEH",
+            var x when x.Contains("machinery") => "MACH",
+            var x when x.Contains("building") => "BLDG",
+            var x when x.Contains("land") => "LAND",
+            var x when x.Contains("software") => "SOFT",
+            var x when x.Contains("license") => "LIC",
+            var x when x.Contains("office") => "OFC",
+            _ => "OTH"
+        };
+    }
+
+    private RenderFragment GetStatusChip(bool active)
+    {
+        var (colorStyle, icon, text) = active
+            ? ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle, "Active")
+            : ("background-color: #999; color: white;", Icons.Material.Filled.Cancel, "Inactive");
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@text</MudChip>;
+    }
+}

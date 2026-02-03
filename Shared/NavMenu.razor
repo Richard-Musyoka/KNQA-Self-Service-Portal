@@ -27,7 +27,8 @@
         <div class="nav-item px-2">
             <MudNavGroup Title="Leave Management"
                          Icon="@Icons.Material.Filled.DateRange"
-                         Expanded="false">
+                         Expanded="@(expandedGroup == "leave")"
+                         ExpandedChanged="@((bool expanded) => OnGroupExpandChanged("leave", expanded))">
                 <MudNavLink Href="leave-planning">Leave Planning</MudNavLink>
                 <MudNavLink Href="leave-application">Apply Leave</MudNavLink>
             </MudNavGroup>
@@ -37,9 +38,10 @@
         <div class="nav-item px-2">
             <MudNavGroup Title="Performance Management"
                          Icon="@Icons.Material.Filled.Assessment"
-                         Expanded="false">
-                <MudNavLink Href="target-setting">Target Setting</MudNavLink>
-                <MudNavLink Href="appraisal">Appraisal</MudNavLink>
+                         Expanded="@(expandedGroup == "performance")"
+                         ExpandedChanged="@((bool expanded) => OnGroupExpandChanged("performance", expanded))">
+                <MudNavLink Href="performance-targets">Target Setting</MudNavLink>
+                <MudNavLink Href="appraisals">Appraisal</MudNavLink>
             </MudNavGroup>
         </div>
 
@@ -47,7 +49,8 @@
         <div class="nav-item px-2">
             <MudNavGroup Title="Training & Development"
                          Icon="@Icons.Material.Filled.School"
-                         Expanded="false">
+                         Expanded="@(expandedGroup == "training")"
+                         ExpandedChanged="@((bool expanded) => OnGroupExpandChanged("training", expanded))">
                 <MudNavLink Href="training-request">Request Training</MudNavLink>
                 <MudNavLink Href="training-evaluation">Evaluation</MudNavLink>
             </MudNavGroup>
@@ -59,7 +62,8 @@
         <div class="nav-item px-2">
             <MudNavGroup Title="Job Requisition"
                          Icon="@Icons.Material.Filled.Business"
-                         Expanded="false">
+                         Expanded="@(expandedGroup == "recruitment")"
+                         ExpandedChanged="@((bool expanded) => OnGroupExpandChanged("recruitment", expanded))">
                 <MudNavLink Href="job-requisition">Job Requisition</MudNavLink>
             </MudNavGroup>
         </div>
@@ -70,7 +74,8 @@
         <div class="nav-item px-2">
             <MudNavGroup Title="Errand Services"
                          Icon="@Icons.Material.Filled.Home"
-                         Expanded="false">
+                         Expanded="@(expandedGroup == "errands")"
+                         ExpandedChanged="@((bool expanded) => OnGroupExpandChanged("errands", expanded))">
                 <MudNavLink Href="room-booking">Meeting Rooms</MudNavLink>
                 <MudNavLink Href="transport-request">Transport</MudNavLink>
                 <MudNavLink Href="vehicle-maintenance">Car Repair</MudNavLink>
@@ -83,8 +88,10 @@
         <div class="nav-item px-2">
             <MudNavGroup Title="Asset Management"
                          Icon="@Icons.Material.Filled.Computer"
-                         Expanded="false">
+                         Expanded="@(expandedGroup == "assets")"
+                         ExpandedChanged="@((bool expanded) => OnGroupExpandChanged("assets", expanded))">
                 <MudNavLink Href="my-assets">My Assets</MudNavLink>
+                <MudNavLink Href="fixed-assets">Fixed Assets</MudNavLink>
                 <MudNavLink Href="asset-management">Asset Repairs</MudNavLink>
             </MudNavGroup>
         </div>
@@ -93,7 +100,8 @@
         <div class="nav-item px-2">
             <MudNavGroup Title="IT Support"
                          Icon="@Icons.Material.Filled.Support"
-                         Expanded="false">
+                         Expanded="@(expandedGroup == "it-support")"
+                         ExpandedChanged="@((bool expanded) => OnGroupExpandChanged("it-support", expanded))">
                 <MudNavLink Href="help-desk">Help Desk</MudNavLink>
                 <MudNavLink Href="incident-management">Incidents</MudNavLink>
             </MudNavGroup>
@@ -105,7 +113,8 @@
         <div class="nav-item px-2">
             <MudNavGroup Title="Administration"
                          Icon="@Icons.Material.Filled.Settings"
-                         Expanded="false"
+                         Expanded="@(expandedGroup == "admin")"
+                         ExpandedChanged="@((bool expanded) => OnGroupExpandChanged("admin", expanded))"
                          Class="admin-nav-group">
                 <MudNavLink Href="/users">Users</MudNavLink>
             </MudNavGroup>
@@ -127,9 +136,29 @@
 @code {
     private bool collapseNavMenu = true;
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private string? expandedGroup = null;
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void OnGroupExpandChanged(string groupName, bool expanded)
+    {
+        if (expanded)
+        {
+            // Close all other groups and open only this one
+            expandedGroup = groupName;
+        }
+        else
+        {
+            // If the user is closing the current group, allow it
+            if (expandedGroup == groupName)
+            {
+                expandedGroup = null;
+            }
+        }
+
+        StateHasChanged();
     }
 }

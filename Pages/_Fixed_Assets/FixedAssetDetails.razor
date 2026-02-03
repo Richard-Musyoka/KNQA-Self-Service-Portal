@@ -1,0 +1,422 @@
+﻿@using KNQASelfService.Models
+@using MudBlazor
+
+<MudDialog MaxWidth="MaxWidth.Large" FullWidth="true">
+    <DialogContent>
+        @if (Asset != null)
+        {
+            <MudGrid Spacing="2">
+                <!-- Header Section -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 8px;">
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                <MudIcon Icon="@Icons.Material.Filled.Inventory2"
+                                         Size="Size.Large"
+                                         Style="color:#D4A853;" />
+                                <div>
+                                    <MudText Typo="Typo.h5" Style="color:white;font-weight:600;">
+                                        Fixed Asset Details
+                                    </MudText>
+                                    <MudText Typo="Typo.body2" Style="color:rgba(255,255,255,0.8);">
+                                        Asset @Asset.No
+                                    </MudText>
+                                </div>
+                            </MudStack>
+
+                            <MudStack Spacing="1" AlignItems="AlignItems.End">
+                                @GetStatusChip(Asset.Active)
+                                <MudChip T="string" Size="Size.Small" Style="background-color: #D4A853; color: white;">
+                                    @Asset.TangibleIntangible
+                                </MudChip>
+                            </MudStack>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Basic Information -->
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #00286E;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+                            Basic Information
+                        </MudText>
+
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Asset Number</MudText>
+                                <MudChip T="string" Style="background:#00286E;color:white;">@Asset.No</MudChip>
+                            </MudItem>
+
+                            @if (!string.IsNullOrEmpty(Asset.FAOldNumber))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2">Old Asset Number</MudText>
+                                    <MudText Typo="Typo.body1">@Asset.FAOldNumber</MudText>
+                                </MudItem>
+                            }
+
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Description</MudText>
+                                <MudPaper Class="pa-3 mt-2" Elevation="0" Style="background-color: #f5f5f5;">
+                                    <MudText Typo="Typo.body2">@Asset.Description</MudText>
+                                </MudPaper>
+                            </MudItem>
+
+                            @if (!string.IsNullOrEmpty(Asset.SearchDescription))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2">Search Description</MudText>
+                                    <MudText Typo="Typo.body2" Style="color: #666;">@Asset.SearchDescription</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Classification -->
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #D4A853;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Category" Class="mr-2" />
+                            Classification
+                        </MudText>
+
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.subtitle2">Asset Class</MudText>
+                                <MudChip T="string" Style="background:#D4A853;color:white;">
+                                    @Asset.FixedAssetClassCode
+                                </MudChip>
+                            </MudItem>
+
+                            @if (!string.IsNullOrEmpty(Asset.ClassCode))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Class Code</MudText>
+                                    <MudText Typo="Typo.body1">@Asset.ClassCode</MudText>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.SubclassCode))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Subclass Code</MudText>
+                                    <MudText Typo="Typo.body1">@Asset.SubclassCode</MudText>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.KnqaCode))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2">KNQA Code</MudText>
+                                    <MudText Typo="Typo.body1">@Asset.KnqaCode</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Identification -->
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #2196f3;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.QrCode" Class="mr-2" />
+                            Identification
+                        </MudText>
+
+                        <MudGrid Spacing="2">
+                            @if (!string.IsNullOrEmpty(Asset.TagNo))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Tag Number</MudText>
+                                    <MudChip T="string" Style="background:#2196f3;color:white;">
+                                        <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" Class="mr-1" />
+                                        @Asset.TagNo
+                                    </MudChip>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.SerialNo))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Serial Number</MudText>
+                                    <MudText Typo="Typo.body1" Style="font-family: monospace;">@Asset.SerialNo</MudText>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.RegistrationNo))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2">Registration Number</MudText>
+                                    <MudText Typo="Typo.body1">@Asset.RegistrationNo</MudText>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.Manufacturer))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Manufacturer</MudText>
+                                    <MudText Typo="Typo.body1">@Asset.Manufacturer</MudText>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.Model))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Model</MudText>
+                                    <MudText Typo="Typo.body1">@Asset.Model</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Allocation Information -->
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #4caf50;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.AssignmentInd" Class="mr-2" />
+                            Allocation
+                        </MudText>
+
+                        <MudGrid Spacing="2">
+                            @if (!string.IsNullOrEmpty(Asset.AllocationType))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2">Allocation Type</MudText>
+                                    <MudChip T="string" Style="background:#4caf50;color:white;">
+                                        @Asset.AllocationType
+                                    </MudChip>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.ResponsibleEmployee))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2">Responsible Employee</MudText>
+                                    <MudText Typo="Typo.body1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="color: #D4A853;" />
+                                        @Asset.ResponsibleEmployeeName
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">@Asset.ResponsibleEmployee</MudText>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.DepartmentCode))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2">Department</MudText>
+                                    <MudText Typo="Typo.body1">@Asset.DepartmentCode</MudText>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.Location))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2">Location</MudText>
+                                    <MudText Typo="Typo.body1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" Style="color: #D4A853;" />
+                                        @Asset.Location
+                                    </MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Financial Information -->
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #ff9800;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Class="mr-2" />
+                            Financial
+                        </MudText>
+
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6">
+                                <MudText Typo="Typo.subtitle2">Acquisition Date</MudText>
+                                <MudText Typo="Typo.body1">
+                                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Size="Size.Small" Style="color: #D4A853;" />
+                                    @ParseDate(Asset.AcqDate)
+                                </MudText>
+                            </MudItem>
+
+                            @if (Asset.AcquisitionCost > 0)
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Acquisition Cost</MudText>
+                                    <MudText Typo="Typo.h6" Style="color:#00286E;">
+                                        KES @Asset.AcquisitionCost.ToString("N2")
+                                    </MudText>
+                                </MudItem>
+                            }
+
+                            @if (Asset.BookValue > 0)
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Current Book Value</MudText>
+                                    <MudText Typo="Typo.h6" Style="color:#4caf50;">
+                                        KES @Asset.BookValue.ToString("N2")
+                                    </MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Condition & Maintenance -->
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4 mb-4"
+                              Elevation="1"
+                              Style="border-radius:8px;border-left:4px solid #9c27b0;">
+                        <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Build" Class="mr-2" />
+                            Condition & Maintenance
+                        </MudText>
+
+                        <MudGrid Spacing="2">
+                            @if (!string.IsNullOrEmpty(Asset.Condition))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2">Condition</MudText>
+                                    @GetConditionChip(Asset.Condition)
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.LastMaintenanceDate))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Last Maintenance</MudText>
+                                    <MudText Typo="Typo.body1">@ParseDate(Asset.LastMaintenanceDate)</MudText>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.NextMaintenanceDate))
+                            {
+                                <MudItem xs="12" sm="6">
+                                    <MudText Typo="Typo.subtitle2">Next Maintenance</MudText>
+                                    <MudText Typo="Typo.body1" Style="@GetMaintenanceDateStyle(Asset.NextMaintenanceDate)">
+                                        @ParseDate(Asset.NextMaintenanceDate)
+                                    </MudText>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(Asset.WarrantyExpiryDate))
+                            {
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2">Warranty Expiry</MudText>
+                                    <MudText Typo="Typo.body1">@ParseDate(Asset.WarrantyExpiryDate)</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Remarks -->
+                @if (!string.IsNullOrEmpty(Asset.Remarks))
+                {
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-4 mb-4"
+                                  Elevation="1"
+                                  Style="border-radius:8px;border-left:4px solid #607d8b;">
+                            <MudText Typo="Typo.h6" Style="color:#00286E;margin-bottom:16px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Notes" Class="mr-2" />
+                                Additional Notes
+                            </MudText>
+                            <MudPaper Class="pa-3" Elevation="0" Style="background-color: #f5f5f5;">
+                                <MudText Typo="Typo.body2">@Asset.Remarks</MudText>
+                            </MudPaper>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            <div style="text-align: center; padding: 60px 20px;">
+                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No asset data available</MudText>
+                <MudText Typo="Typo.body2" Style="color: #999;">Please select a valid asset</MudText>
+            </div>
+        }
+    </DialogContent>
+</MudDialog>
+
+@code {
+
+
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter]
+    public FixedAsset? Asset { get; set; }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "Not specified";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private RenderFragment GetStatusChip(bool active)
+    {
+        var (colorStyle, icon, text) = active
+            ? ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle, "Active")
+            : ("background-color: #999; color: white;", Icons.Material.Filled.Cancel, "Inactive");
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@text</MudChip>;
+    }
+
+    private RenderFragment GetConditionChip(string? condition)
+    {
+        var (colorStyle, icon) = (condition ?? "Good") switch
+        {
+            "Excellent" => ("background-color: #4caf50; color: white;", Icons.Material.Filled.Star),
+            "Good" => ("background-color: #8bc34a; color: white;", Icons.Material.Filled.ThumbUp),
+            "Fair" => ("background-color: #ff9800; color: white;", Icons.Material.Filled.Remove),
+            "Poor" => ("background-color: #ff5722; color: white;", Icons.Material.Filled.ThumbDown),
+            "Damaged" => ("background-color: #f44336; color: white;", Icons.Material.Filled.ReportProblem),
+            "Under Repair" => ("background-color: #2196f3; color: white;", Icons.Material.Filled.Build),
+            "Obsolete" => ("background-color: #9e9e9e; color: white;", Icons.Material.Filled.Block),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help)
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@condition</MudChip>;
+    }
+
+    private string GetMaintenanceDateStyle(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || !DateTime.TryParse(dateString, out var date))
+            return "color: #666;";
+
+        var daysUntil = (date - DateTime.Now).Days;
+
+        if (daysUntil < 0)
+            return "color: #f44336; font-weight: 600;"; // Overdue
+        else if (daysUntil <= 7)
+            return "color: #ff9800; font-weight: 600;"; // Due soon
+        else if (daysUntil <= 30)
+            return "color: #D4A853; font-weight: 600;"; // Coming up
+        else
+            return "color: #4caf50;"; // Future
+
+    }
+}

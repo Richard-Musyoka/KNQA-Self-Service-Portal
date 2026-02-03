@@ -1,0 +1,186 @@
+﻿@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IFixedAssetService FixedAssetService
+@inject ISnackbar Snackbar
+
+<MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true">
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(AssetNo))
+        {
+            <MudGrid Spacing="2">
+                <!-- Header -->
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4 mb-4"
+                              Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 8px;">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                            <MudIcon Icon="@Icons.Material.Filled.Build"
+                                     Size="Size.Large"
+                                     Style="color:#D4A853;" />
+                            <div>
+                                <MudText Typo="Typo.h6" Style="color:white;font-weight:600;">
+                                    Maintenance History
+                                </MudText>
+                                <MudText Typo="Typo.body2" Style="color:rgba(255,255,255,0.8);">
+                                    Asset @AssetNo - @AssetDescription
+                                </MudText>
+                            </div>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Loading -->
+                @if (loading)
+                {
+                    <MudItem xs="12">
+                        <div style="text-align: center; padding: 40px;">
+                            <MudProgressCircular Style="color: #00286E;" Size="Size.Medium" Indeterminate="true" />
+                            <MudText Typo="Typo.body2" Style="color: #666; margin-top: 16px;">Loading maintenance history...</MudText>
+                        </div>
+                    </MudItem>
+                }
+                else if (!maintenanceHistory.Any())
+                {
+                    <MudItem xs="12">
+                        <div style="text-align: center; padding: 40px 20px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Construction" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                            <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No Maintenance Records</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #999;">No maintenance history found for this asset</MudText>
+                        </div>
+                    </MudItem>
+                }
+                else
+                {
+                    @foreach (var record in maintenanceHistory)
+                    {
+                        <MudItem xs="12">
+                            <MudPaper Class="pa-3 mb-3" Elevation="1" Style="border-radius: 8px; border-left: 4px solid #D4A853;">
+                                <MudGrid Spacing="1">
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;">Date</MudText>
+                                        <MudText Typo="Typo.body2">@ParseDate(record.MaintenanceDate)</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;">Type</MudText>
+                                        <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">
+                                            @record.MaintenanceType
+                                        </MudChip>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;">Description</MudText>
+                                        <MudText Typo="Typo.body2">@record.Description</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;">Cost</MudText>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600; color: #00286E;">
+                                            KES @record.Cost.ToString("N2")
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;">Performed By</MudText>
+                                        <MudText Typo="Typo.body2">@record.PerformedBy</MudText>
+                                    </MudItem>
+                                    @if (!string.IsNullOrEmpty(record.NextMaintenanceDate))
+                                    {
+                                        <MudItem xs="12">
+                                            <MudText Typo="Typo.subtitle2" Style="color:#00286E;">Next Maintenance</MudText>
+                                            <MudText Typo="Typo.body2" Style="@GetMaintenanceDateStyle(record.NextMaintenanceDate)">
+                                                @ParseDate(record.NextMaintenanceDate)
+                                            </MudText>
+                                        </MudItem>
+                                    }
+                                    @if (!string.IsNullOrEmpty(record.Remarks))
+                                    {
+                                        <MudItem xs="12">
+                                            <MudText Typo="Typo.subtitle2" Style="color:#00286E;">Remarks</MudText>
+                                            <MudText Typo="Typo.body2" Style="color: #666;">@record.Remarks</MudText>
+                                        </MudItem>
+                                    }
+                                </MudGrid>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                }
+            </MudGrid>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+    [Parameter] public string AssetNo { get; set; } = string.Empty;
+    [Parameter] public string AssetDescription { get; set; } = string.Empty;
+
+    private bool loading = true;
+    private List<AssetMaintenance> maintenanceHistory = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(AssetNo))
+        {
+            await LoadMaintenanceHistory();
+        }
+        else
+        {
+            loading = false;
+        }
+    }
+
+    private async Task LoadMaintenanceHistory()
+    {
+        try
+        {
+            loading = true;
+            StateHasChanged();
+
+            maintenanceHistory = await FixedAssetService.GetAssetMaintenanceHistoryAsync(AssetNo);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading maintenance history: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string ParseDate(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || dateString == "0001-01-01")
+            return "Not specified";
+
+        if (DateTime.TryParse(dateString, out var date))
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+
+        return dateString;
+    }
+
+    private string GetMaintenanceDateStyle(string? dateString)
+    {
+        if (string.IsNullOrEmpty(dateString) || !DateTime.TryParse(dateString, out var date))
+            return "color: #666;";
+
+        var daysUntil = (date - DateTime.Now).Days;
+
+        if (daysUntil < 0)
+            return "color: #f44336; font-weight: 600;"; // Overdue
+        else if (daysUntil <= 7)
+            return "color: #ff9800; font-weight: 600;"; // Due soon
+        else if (daysUntil <= 30)
+            return "color: #D4A853; font-weight: 600;"; // Coming up
+        else
+            return "color: #4caf50;"; // Future
+    }
+
+    private void Cancel()
+    {
+    }
+}

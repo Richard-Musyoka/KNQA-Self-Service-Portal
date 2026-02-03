@@ -1,0 +1,1184 @@
+﻿@page "/asset-management"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IAssetRepairService AssetRepairService
+@inject ICurrentUserService CurrentUserService
+@inject IFixedAssetService FixedAssetService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Asset Repairs</PageTitle>
+
+<MudLayout>
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="800px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+        
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@(isEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                @(isEditMode ? "Edit Repair Request" : "New Repair Request")
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@formValid">
+                <MudGrid Spacing="3">
+                    <!-- Header Section -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;margin:0 0 8px 0;font-weight:600; padding-bottom: 8px; border-bottom: 2px solid #D4A853;">
+                            REPAIR REQUEST FORM
+                        </MudText>
+                    </MudItem>
+
+                    @if (isEditMode)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="formModel.MaintenanceRefNo"
+                                          Label="Maintenance Reference"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+
+                    <!-- Employee Details Section -->
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #00286E;">
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;">
+                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="margin-right: 8px;" />
+                                        REQUESTER DETAILS
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.EmployeeNo"
+                                                  Label="Employee No *"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true"
+                                                  Required="true" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.EmployeeName"
+                                                  Label="Employee Name"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.JobTitle"
+                                                  Label="Job Title"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.SupervisorName"
+                                                  Label="Supervisor Name"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="formModel.Department"
+                                                  Label="Department"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+
+                  
+
+                    <!-- Asset Details Section -->
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #00286E;">
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;">
+                                        <MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Small" Style="margin-right: 8px;" />
+                                        ASSET DETAILS
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudSelect T="string"
+                                               @bind-Value="selectedAssetNo"
+                                               Label="Select Asset *"
+                                               Variant="Variant.Outlined"
+                                               Required="true"
+                                               SearchFunc="@SearchAssets"
+                                               ToStringFunc="GetAssetDisplayText"
+                                               OnSearchValueChanged="OnAssetSearchValueChanged">
+                                        @if (!string.IsNullOrEmpty(selectedAssetNo))
+                                        {
+                                            <MudSelectItem T="string" Value="@selectedAssetNo">
+                                                @GetAssetDisplayText(selectedAssetNo)
+                                            </MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.AssetName"
+                                                  Label="Asset Name"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Maintenance Issue Section -->
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #fff8e1; border-radius: 8px; border-left: 4px solid #f57c00;">
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;">
+                                        <MudIcon Icon="@Icons.Material.Filled.ReportProblem" Size="Size.Small" Style="margin-right: 8px;" />
+                                        MAINTENANCE ISSUE
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="formModel.MaintenanceIssue"
+                                                  Label="Issue Description *"
+                                                  Variant="Variant.Outlined"
+                                                  Required="true"
+                                                  Lines="3"
+                                                  MultiLine="true"
+                                                  HelperText="Describe the issue in detail" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudSelect T="string"
+                                               @bind-Value="formModel.RepairPriority"
+                                               Label="Repair Priority *"
+                                               Variant="Variant.Outlined"
+                                               Required="true">
+                                        @foreach (var priority in repairPriorityList)
+                                        {
+                                            <MudSelectItem T="string" Value="@priority">@priority</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudDatePicker @bind-Date="reportedDate"
+                                                   Label="Reported Date"
+                                                   Variant="Variant.Outlined"
+                                                   ReadOnly="true" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Additional Information -->
+                    @if (isEditMode)
+                    {
+                        <MudItem xs="12">
+                            <MudPaper Elevation="1" Class="pa-3" Style="background-color: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
+                                <MudGrid Spacing="2">
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;">
+                                            <MudIcon Icon="@Icons.Material.Filled.AssignmentTurnedIn" Size="Size.Small" Style="margin-right: 8px;" />
+                                            REPAIR TRACKING
+                                        </MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField @bind-Value="formModel.AssignedTechnician"
+                                                      Label="Assigned Technician"
+                                                      Variant="Variant.Outlined" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudDatePicker @bind-Date="completedDate"
+                                                       Label="Completed Date"
+                                                       Variant="Variant.Outlined" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField T="decimal?"
+                                                      @bind-Value="formModel.EstimatedCost"
+                                                      Label="Estimated Cost"
+                                                      Variant="Variant.Outlined"
+                                                      Adornment="Adornment.Start"
+                                                      AdornmentText="KES"
+                                                      Clearable="true" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField T="decimal?"
+                                                      @bind-Value="formModel.ActualCost"
+                                                      Label="Actual Cost"
+                                                      Variant="Variant.Outlined"
+                                                      Adornment="Adornment.Start"
+                                                      AdornmentText="KES"
+                                                      Clearable="true" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="formModel.ResolutionDetails"
+                                                      Label="Resolution Details"
+                                                      Variant="Variant.Outlined"
+                                                      Lines="2"
+                                                      MultiLine="true" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudPaper>
+                        </MudItem>
+                    }
+
+                    <!-- Remarks -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="formModel.Remarks"
+                                      Label="Remarks"
+                                      Variant="Variant.Outlined"
+                                      Lines="2"
+                                      MultiLine="true" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                    Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Style="background-color: #D4A853; color: white;"
+                           OnClick="@(() => SaveRepair())"
+                           Disabled="@(!formValid || saving)">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                        <span class="ms-2">Saving...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Save" Size="Size.Small" />
+                        <span class="ms-2">@(isEditMode ? "Update" : "Submit Request")</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Handyman" Style="margin-right: 12px; vertical-align: middle;" />
+                            Asset Repairs Management
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(currentEmployeeName))
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                @currentEmployeeName (@currentEmployeeNo)
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudButtonGroup Variant="Variant.Filled">
+                            <MudButton StartIcon="@Icons.Material.Filled.Add"
+                                       Style="background-color: #D4A853; color: white;"
+                                       OnClick="OpenCreateDrawer">
+                                New Repair Request
+                            </MudButton>
+                           
+                        </MudButtonGroup>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Error/Success Messages -->
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => errorMessage = null"
+                          Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success"
+                          Variant="Variant.Filled"
+                          CloseIcon="@Icons.Material.Filled.Close"
+                          CloseIconClicked="() => successMessage = null"
+                          Class="mb-4">
+                    @successMessage
+                </MudAlert>
+            }
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <div style="display: flex; justify-content: center; align-items: center; min-height: 400px;">
+                    <MudProgressCircular Style="color: #00286E;" Size="Size.Large" Indeterminate="true" />
+                </div>
+            }
+            else
+            {
+                <!-- Summary Cards -->
+                <MudGrid Class="mb-4">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-left: 4px solid #D4A853;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">Total Repairs</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summary.TotalRepairs</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Handyman" Size="Size.Large" Style="color: #D4A853;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #f57c00 0%, #ff9800 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Open Repairs</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summary.OpenRepairs</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #D4A853 0%, #E4B363 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">In Progress</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summary.InProgressRepairs</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.Build" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Elevation="2" Class="pa-4" Style="border-radius: 12px; background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%); border-left: 4px solid #00286E;">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.9);">Completed</MudText>
+                                    <MudText Typo="Typo.h4" Style="color: white; font-weight: 700;">@summary.CompletedRepairs</MudText>
+                                </div>
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Style="color: white;" />
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Filters -->
+                <MudPaper Elevation="2" Class="mb-4 pa-4" Style="border-radius: 12px;">
+                    <MudGrid Spacing="3" AlignItems="AlignItems.Center">
+                        <MudItem xs="12" md="3">
+                            <MudTextField @bind-Value="searchTerm"
+                                          Label="Search..."
+                                          Placeholder="Search by Ref No, Asset, Issue..."
+                                          Variant="Variant.Outlined"
+                                          Immediate="true"
+                                          OnKeyDown="@(async (e) => { if (e.Key == "Enter") await SearchRepairs(); })" />
+                        </MudItem>
+                        <MudItem xs="12" md="2">
+                            <MudSelect T="string" @bind-Value="filter.MaintenanceStatus"
+                                       Label="Status"
+                                       Variant="Variant.Outlined">
+                                <MudSelectItem T="string" Value="@string.Empty">All Status</MudSelectItem>
+                                @foreach (var status in repairStatusList)
+                                {
+                                    <MudSelectItem T="string" Value="@status">@status</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="2">
+                            <MudSelect T="string" @bind-Value="filter.RepairPriority"
+                                       Label="Priority"
+                                       Variant="Variant.Outlined">
+                                <MudSelectItem T="string" Value="@string.Empty">All Priority</MudSelectItem>
+                                @foreach (var priority in repairPriorityList)
+                                {
+                                    <MudSelectItem T="string" Value="@priority">@priority</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="3">
+                            <MudDateRangePicker Label="Date Range"
+                                                @bind-DateRange="dateRange"
+                                                Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" md="2" Style="display: flex; gap: 8px;">
+                            <MudButton OnClick="SearchRepairs"
+                                       Variant="Variant.Filled"
+                                       Style="background-color: #00286E; color: white;"
+                                       StartIcon="@Icons.Material.Filled.Search"
+                                       Disabled="@searching">
+                                @if (searching)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                }
+                                Search
+                            </MudButton>
+                            <MudButton OnClick="ClearFilters"
+                                       Variant="Variant.Outlined"
+                                       Style="border-color: #666; color: #666;">
+                                Clear
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+
+              
+
+                <!-- Repairs Table -->
+                <MudPaper Elevation="3" Style="border-radius: 12px; overflow: hidden; border-top: 4px solid #D4A853;">
+                    @if (!repairs.Any())
+                    {
+                        <div style="text-align: center; padding: 60px 20px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Handyman" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                            <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No repair requests found</MudText>
+                            <MudText Typo="Typo.body2" Style="color: #999;">
+                                @(string.IsNullOrEmpty(searchTerm) ? "No repair requests available." : "No repair requests match your search criteria.")
+                            </MudText>
+                            <MudButton Variant="Variant.Filled"
+                                       Style="background-color: #D4A853; color: white; margin-top: 20px;"
+                                       OnClick="OpenCreateDrawer"
+                                       StartIcon="@Icons.Material.Filled.Add">
+                                New Repair Request
+                            </MudButton>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudTable Items="@repairs"
+                                  Hover="true"
+                                  Striped="true"
+                                  Breakpoint="Breakpoint.Sm"
+                                  Dense="true"
+                                  Loading="@loading"
+                                  LoadingProgressColor="Color.Primary">
+                            <HeaderContent>
+                                <MudTh>Ref No</MudTh>
+                                <MudTh>Reported Date</MudTh>
+                                <MudTh>Asset Details</MudTh>
+                                <MudTh>Employee</MudTh>
+                                <MudTh>Issue</MudTh>
+                                <MudTh>Priority</MudTh>
+                                <MudTh>Status</MudTh>
+                                <MudTh>Estimated Cost</MudTh>
+                                <MudTh Style="text-align: center;">Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="repair">
+                                <MudTd DataLabel="Ref No">
+                                    <MudChip T="string" Size="Size.Small" Style="background-color: #00286E; color: white;">
+                                        @repair.MaintenanceRefNo
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Reported Date">
+                                    <MudText Typo="Typo.body2">@repair.ReportedDate?.ToString("dd/MM/yyyy")</MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Asset Details">
+                                    <div>
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">@repair.AssetNo</MudText>
+                                        <MudText Typo="Typo.caption" Style="color: #666;">@repair.AssetName</MudText>
+                                    </div>
+                                </MudTd>
+                                <MudTd DataLabel="Employee">
+                                    <div>
+                                        <MudText Typo="Typo.body2">@repair.EmployeeName</MudText>
+                                        <MudText Typo="Typo.caption" Style="color: #666;">@repair.Department</MudText>
+                                    </div>
+                                </MudTd>
+                                <MudTd DataLabel="Issue">
+                                    <MudText Typo="Typo.body2" Style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        @repair.MaintenanceIssue
+                                    </MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Priority">
+                                    @GetPriorityChip(repair.RepairPriority)
+                                </MudTd>
+                                <MudTd DataLabel="Status">
+                                    @GetStatusChip(repair.MaintenanceStatus)
+                                </MudTd>
+                                <MudTd DataLabel="Estimated Cost">
+                                    <MudText Typo="Typo.body2">
+                                        @if (repair.EstimatedCost.HasValue && repair.EstimatedCost > 0)
+                                        {
+                                            <span>KES @repair.EstimatedCost.Value.ToString("N2")</span>
+                                        }
+                                        else
+                                        {
+                                            <span>-</span>
+                                        }
+                                    </MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Actions" Style="text-align: center;">
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Style="color: #00286E;"
+                                                       OnClick="@(() => ViewRepairDetails(repair))" />
+                                    </MudTooltip>
+                                    @if (repair.EmployeeNo == currentEmployeeNo || repair.MaintenanceStatus == RepairStatus.OPEN)
+                                    {
+                                        <MudTooltip Text="Edit">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                           Size="Size.Small"
+                                                           Style="color: #D4A853;"
+                                                           OnClick="@(() => OpenEditDrawer(repair))" />
+                                        </MudTooltip>
+                                    }
+                                    @if (repair.EmployeeNo == currentEmployeeNo && repair.MaintenanceStatus == RepairStatus.OPEN)
+                                    {
+                                        <MudTooltip Text="Delete">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Size="Size.Small"
+                                                           Style="color: #f44336;"
+                                                           OnClick="@(() => ConfirmDelete(repair))" />
+                                        </MudTooltip>
+                                    }
+                                </MudTd>
+                            </RowTemplate>
+                            <PagerContent>
+                                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+                            </PagerContent>
+                        </MudTable>
+                    }
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool loading = false;
+    private bool searching = false;
+    private bool exporting = false;
+    private bool saving = false;
+    private bool loadingAssets = false;
+    private string? deleteRepairNo;
+
+    private string currentEmployeeNo = string.Empty;
+    private string currentEmployeeName = string.Empty;
+    private string currentEmployeeDepartment = string.Empty;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = string.Empty;
+
+    private List<Models.AssetRepair> repairs = new();
+    private Models.AssetRepairSummary summary = new();
+    private Models.AssetRepairFilter filter = new();
+    private List<string> repairStatusList = new();
+    private List<string> repairPriorityList = new();
+    private List<Models.FixedAsset> availableAssets = new();
+    private DateRange? dateRange;
+
+    // Drawer variables
+    private bool drawerOpen = false;
+    private bool isEditMode = false;
+    private MudForm form;
+    private bool formValid;
+    private Models.AssetRepair formModel = new();
+    private Models.AssetRepair? editingRepair = null;
+    private DateTime? reportedDate;
+    private DateTime? completedDate;
+    private string? selectedAssetNo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+            currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+            currentEmployeeDepartment = await GetEmployeeDepartment();
+
+            if (string.IsNullOrEmpty(currentEmployeeNo))
+            {
+                errorMessage = "Employee number not found. Please log in again.";
+                loading = false;
+                StateHasChanged();
+                return;
+            }
+
+            filter.OrderBy = "ReportedDate desc";
+            await LoadMasterData();
+            await LoadRepairs();
+            await LoadSummary();
+            await LoadEmployeeAssets();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error initializing page: {ex.Message}";
+            loading = false;
+        }
+    }
+
+    private async Task<string> GetEmployeeDepartment()
+    {
+        try
+        {
+            var employee = await FixedAssetService.GetEmployeeAsync(currentEmployeeNo);
+            return employee?.DepartmentCode;
+        }
+        catch
+        {
+            return "Not Specified";
+        }
+    }
+
+    private async Task LoadMasterData()
+    {
+        try
+        {
+            var statusTask = AssetRepairService.GetRepairStatusListAsync();
+            var priorityTask = AssetRepairService.GetRepairPriorityListAsync();
+
+            await Task.WhenAll(statusTask, priorityTask);
+
+            repairStatusList = await statusTask;
+            repairPriorityList = await priorityTask;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading master data: {ex.Message}");
+        }
+    }
+
+    private async Task LoadEmployeeAssets()
+    {
+        try
+        {
+            loadingAssets = true;
+            availableAssets = await FixedAssetService.GetAssetsByEmployeeAsync(currentEmployeeNo);
+            loadingAssets = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading employee assets: {ex.Message}");
+            loadingAssets = false;
+        }
+    }
+
+  
+
+    private async Task<IEnumerable<string>> SearchAssets(string value)
+    {
+        // If value is empty, return all assets
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return availableAssets.Select(a => a.No);
+        }
+
+        // Filter assets based on search term
+        return availableAssets
+            .Where(a => (a.Description?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                       (a.No?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false))
+            .Select(a => a.No)
+            .ToList();
+    }
+
+    private string GetAssetDisplayText(string assetNo)
+    {
+        if (string.IsNullOrEmpty(assetNo))
+            return "Select an asset";
+
+        var asset = availableAssets.FirstOrDefault(a => a.No == assetNo);
+        return asset != null ? $"{asset.Description} ({asset.No})" : assetNo;
+    }
+
+    private void OnAssetSearchValueChanged(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            var asset = availableAssets.FirstOrDefault(a => a.No == value);
+            if (asset != null)
+            {
+                formModel.AssetNo = asset.No;
+                formModel.AssetName = asset.Description;
+            }
+        }
+        else
+        {
+            formModel.AssetNo = null;
+            formModel.AssetName = null;
+        }
+    }
+
+    private void OnAssetSelected(string value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            var asset = availableAssets.FirstOrDefault(a => a.No == value);
+            if (asset != null)
+            {
+                formModel.AssetNo = asset.No;
+                formModel.AssetName = asset.Description;
+            }
+        }
+        else
+        {
+            formModel.AssetNo = null;
+            formModel.AssetName = null;
+        }
+    }
+
+    private async Task LoadRepairs()
+    {
+        try
+        {
+            loading = true;
+            errorMessage = null;
+            StateHasChanged();
+
+            // Apply date range filter if set
+            if (dateRange != null)
+            {
+                filter.FromDate = dateRange.Start;
+                filter.ToDate = dateRange.End;
+            }
+            else
+            {
+                filter.FromDate = null;
+                filter.ToDate = null;
+            }
+
+            // Apply search term if set
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                filter.SearchTerm = searchTerm;
+            }
+
+            repairs = await AssetRepairService.GetAssetRepairsAsync(filter);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load repairs: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadSummary()
+    {
+        try
+        {
+            summary = await AssetRepairService.GetRepairSummaryAsync(currentEmployeeNo);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading summary: {ex}");
+        }
+    }
+
+    private async Task SearchRepairs()
+    {
+        try
+        {
+            searching = true;
+            StateHasChanged();
+            await LoadRepairs();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching repairs: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            searching = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearFilters()
+    {
+        searchTerm = string.Empty;
+        filter = new AssetRepairFilter
+        {
+            OrderBy = "ReportedDate desc"
+        };
+        dateRange = null;
+
+        await LoadRepairs();
+        Snackbar.Add("Filters cleared", Severity.Info);
+    }
+
+    private async Task ShowMyRepairs()
+    {
+        filter = new AssetRepairFilter
+        {
+            EmployeeNo = currentEmployeeNo,
+            OrderBy = "ReportedDate desc"
+        };
+
+        await LoadRepairs();
+        Snackbar.Add("Showing your repair requests", Severity.Info);
+    }
+
+    private async Task ShowCriticalRepairs()
+    {
+        filter = new AssetRepairFilter
+        {
+            RepairPriority = RepairPriority.CRITICAL,
+            OrderBy = "ReportedDate desc"
+        };
+
+        await LoadRepairs();
+        Snackbar.Add("Showing critical repairs", Severity.Info);
+    }
+
+    private async Task ShowMyAssets()
+    {
+        try
+        {
+            var parameters = new DialogParameters
+            {
+                { "EmployeeNo", currentEmployeeNo }
+            };
+
+            var options = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Large,
+                FullWidth = true,
+                CloseButton = true
+            };
+
+            var dialog = DialogService.Show<MyAssetsDialog>("My Assets", parameters, options);
+            await dialog.Result;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error showing assets: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ViewRepairDetails(Models.AssetRepair repair)
+    {
+        try
+        {
+            var parameters = new DialogParameters
+            {
+                { "Repair", repair }
+            };
+
+            var options = new DialogOptions
+            {
+                MaxWidth = MaxWidth.Large,
+                FullWidth = true,
+                CloseButton = true
+            };
+
+            var dialog = DialogService.Show<AssetRepairDetails>("Repair Details", parameters, options);
+            await dialog.Result;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error viewing repair details: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OpenCreateDrawer()
+    {
+        isEditMode = false;
+        editingRepair = null;
+        formModel = new Models.AssetRepair
+        {
+            EmployeeNo = currentEmployeeNo,
+            EmployeeName = currentEmployeeName,
+            Department = currentEmployeeDepartment,
+            MaintenanceStatus = RepairStatus.OPEN,
+            RepairPriority = RepairPriority.MEDIUM,
+            ReportedDate = DateTime.Now,
+            JobTitle = "Employee",
+            SupervisorName = "Not Specified"
+        };
+
+        reportedDate = DateTime.Now;
+        selectedAssetNo = null;
+        formValid = false;
+        drawerOpen = true;
+        StateHasChanged();
+    }
+
+    private async Task OpenEditDrawer(Models.AssetRepair repair)
+    {
+        try
+        {
+            var currentRepair = await AssetRepairService.GetAssetRepairAsync(repair.MaintenanceRefNo);
+
+            if (currentRepair == null)
+            {
+                Snackbar.Add("Could not load repair details", Severity.Error);
+                return;
+            }
+
+            isEditMode = true;
+            editingRepair = currentRepair;
+            formModel = new Models.AssetRepair
+            {
+                MaintenanceRefNo = currentRepair.MaintenanceRefNo,
+                EmployeeNo = currentRepair.EmployeeNo,
+                EmployeeName = currentRepair.EmployeeName,
+                JobTitle = currentRepair.JobTitle,
+                SupervisorName = currentRepair.SupervisorName,
+                Department = currentRepair.Department,
+                MaintenanceStatus = currentRepair.MaintenanceStatus,
+                MaintenanceDetails = currentRepair.MaintenanceDetails,
+                AssetNo = currentRepair.AssetNo,
+                AssetName = currentRepair.AssetName,
+                MaintenanceIssue = currentRepair.MaintenanceIssue,
+                ReportedDate = currentRepair.ReportedDate,
+                CompletedDate = currentRepair.CompletedDate,
+                EstimatedCost = currentRepair.EstimatedCost,
+                ActualCost = currentRepair.ActualCost,
+                RepairPriority = currentRepair.RepairPriority,
+                AssignedTechnician = currentRepair.AssignedTechnician,
+                ResolutionDetails = currentRepair.ResolutionDetails,
+                Remarks = currentRepair.Remarks,
+                ODataEtag = currentRepair.ODataEtag
+            };
+
+            if (currentRepair.ReportedDate.HasValue)
+                reportedDate = currentRepair.ReportedDate.Value;
+            
+            if (currentRepair.CompletedDate.HasValue)
+                completedDate = currentRepair.CompletedDate.Value;
+
+            selectedAssetNo = currentRepair.AssetNo;
+            drawerOpen = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Failed to load repair for editing", Severity.Error);
+        }
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+        formModel = new Models.AssetRepair();
+        editingRepair = null;
+        reportedDate = null;
+        completedDate = null;
+        selectedAssetNo = null;
+    }
+
+    private async Task SaveRepair()
+    {
+        try
+        {
+            await form.Validate();
+
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            // Validation
+            if (string.IsNullOrEmpty(formModel.EmployeeNo))
+            {
+                Snackbar.Add("Employee number is required", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.AssetNo))
+            {
+                Snackbar.Add("Please select an asset", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.MaintenanceIssue))
+            {
+                Snackbar.Add("Please provide an issue description", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.MaintenanceStatus))
+            {
+                Snackbar.Add("Please select a maintenance status", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.RepairPriority))
+            {
+                Snackbar.Add("Please select a repair priority", Severity.Error);
+                saving = false;
+                return;
+            }
+
+            // Set dates
+            formModel.ReportedDate = reportedDate ?? DateTime.Now;
+            if (completedDate.HasValue)
+                formModel.CompletedDate = completedDate.Value;
+
+            string result;
+            if (isEditMode && editingRepair != null)
+            {
+                result = await AssetRepairService.UpdateAssetRepairAsync(formModel);
+            }
+            else
+            {
+                result = await AssetRepairService.CreateAssetRepairAsync(formModel);
+            }
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add(isEditMode ? "Repair request updated successfully!" : "Repair request created successfully!", Severity.Success);
+                successMessage = result;
+                CloseDrawer();
+                await LoadRepairs();
+                await LoadSummary();
+            }
+            else
+            {
+                Snackbar.Add(result, Severity.Error, config => { config.VisibleStateDuration = 8000; });
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ConfirmDelete(Models.AssetRepair repair)
+    {
+        try
+        {
+            deleteRepairNo = repair.MaintenanceRefNo;
+
+            var confirmed = await DialogService.ShowMessageBox(
+                "Delete Repair Request",
+                $"Are you sure you want to delete repair request '{repair.MaintenanceRefNo}'? This action cannot be undone.",
+                yesText: "Delete",
+                cancelText: "Cancel",
+                options: new DialogOptions
+                {
+                    MaxWidth = MaxWidth.Small,
+                    CloseButton = true
+                });
+
+            if (confirmed == true)
+            {
+                await DeleteRepair();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            deleteRepairNo = null;
+        }
+    }
+
+    private async Task DeleteRepair()
+    {
+        if (string.IsNullOrEmpty(deleteRepairNo))
+            return;
+
+        try
+        {
+            var result = await AssetRepairService.DeleteAssetRepairAsync(deleteRepairNo);
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add($"Repair request {deleteRepairNo} deleted successfully", Severity.Success);
+                await LoadRepairs();
+                await LoadSummary();
+            }
+            else
+            {
+                Snackbar.Add(result, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting repair: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ExportToExcel()
+    {
+        try
+        {
+            exporting = true;
+            StateHasChanged();
+
+            var excelData = await AssetRepairService.ExportRepairsToExcelAsync(filter);
+            
+            if (excelData != null && excelData.Length > 0)
+            {
+                var fileName = $"Asset_Repairs_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                var contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                
+                Navigation.NavigateTo($"data:application/octet-stream;base64,{Convert.ToBase64String(excelData)}", forceLoad: true);
+                
+                Snackbar.Add($"Exported {repairs.Count} repairs to Excel", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to export data", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error exporting to Excel: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            exporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private RenderFragment GetPriorityChip(string? priority)
+    {
+        var (colorStyle, icon, text) = priority switch
+        {
+            RepairPriority.CRITICAL => ("background-color: #d32f2f; color: white;", Icons.Material.Filled.PriorityHigh, "Critical"),
+            RepairPriority.HIGH => ("background-color: #f57c00; color: white;", Icons.Material.Filled.Warning, "High"),
+            RepairPriority.MEDIUM => ("background-color: #1976d2; color: white;", Icons.Material.Filled.Info, "Medium"),
+            RepairPriority.LOW => ("background-color: #388e3c; color: white;", Icons.Material.Filled.LowPriority, "Low"),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help, "Unknown")
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@text</MudChip>;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon, text) = status switch
+        {
+            RepairStatus.OPEN => ("background-color: #f57c00; color: white;", Icons.Material.Filled.Pending, "Open"),
+            RepairStatus.IN_PROGRESS => ("background-color: #1976d2; color: white;", Icons.Material.Filled.Build, "In Progress"),
+            RepairStatus.COMPLETED => ("background-color: #388e3c; color: white;", Icons.Material.Filled.CheckCircle, "Completed"),
+            RepairStatus.CANCELLED => ("background-color: #d32f2f; color: white;", Icons.Material.Filled.Cancel, "Cancelled"),
+            RepairStatus.ON_HOLD => ("background-color: #ffb300; color: white;", Icons.Material.Filled.Pause, "On Hold"),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help, "Unknown")
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@text</MudChip>;
+    }
+}

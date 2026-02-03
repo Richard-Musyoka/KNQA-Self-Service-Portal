@@ -1,0 +1,341 @@
+﻿@using KNQASelfService.Models
+@using MudBlazor
+
+<MudDialog MaxWidth="MaxWidth.Medium" FullWidth="true">
+    <DialogContent>
+        @if (IsEditMode && Asset == null)
+        {
+            <div style="text-align: center; padding: 40px 20px;">
+                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3; color: #00286E;" />
+                <MudText Typo="Typo.h6" Style="margin-top: 16px; color: #999;">No asset data available</MudText>
+            </div>
+        }
+        else
+        {
+            <MudForm Model="@assetModel" @ref="form">
+                <MudGrid Spacing="2">
+                    <!-- Header -->
+                    <MudItem xs="12">
+                        <MudPaper Class="pa-4 mb-4"
+                                  Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 8px;">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                                <MudIcon Icon="@Icons.Material.Filled.Inventory2"
+                                         Size="Size.Large"
+                                         Style="color:#D4A853;" />
+                                <div>
+                                    <MudText Typo="Typo.h5" Style="color:white;font-weight:600;">
+                                        @(IsEditMode ? "Edit Asset" : "Add New Asset")
+                                    </MudText>
+                                    @if (IsEditMode)
+                                    {
+                                        <MudText Typo="Typo.body2" Style="color:rgba(255,255,255,0.8);">
+                                            Asset @assetModel.No
+                                        </MudText>
+                                    }
+                                </div>
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Basic Information -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="assetModel.No"
+                                      Label="Asset Number *"
+                                      Required="true"
+                                      Variant="Variant.Outlined"
+                                      Disabled="@IsEditMode"
+                                      HelperText="Unique identifier for the asset" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="assetModel.Description"
+                                      Label="Description *"
+                                      Required="true"
+                                      Variant="Variant.Outlined"
+                                      HelperText="Brief description of the asset" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="assetModel.FixedAssetClassCode"
+                                   Label="Asset Class *"
+                                   Required="true"
+                                   Variant="Variant.Outlined">
+                            @foreach (var assetClass in assetClasses)
+                            {
+                                <MudSelectItem T="string" Value="@assetClass">@assetClass</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="assetModel.TangibleIntangible"
+                                   Label="Asset Type *"
+                                   Required="true"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem T="string" Value="@AssetType.TANGIBLE">Tangible</MudSelectItem>
+                            <MudSelectItem T="string" Value="@AssetType.INTANGIBLE">Intangible</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Identification -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Style="color:#00286E;margin:16px 0 8px 0;">
+                            Identification
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="assetModel.TagNo"
+                                      Label="Tag Number"
+                                      Variant="Variant.Outlined"
+                                      HelperText="Physical tag on the asset" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="assetModel.SerialNo"
+                                      Label="Serial Number"
+                                      Variant="Variant.Outlined"
+                                      HelperText="Manufacturer serial number" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="assetModel.Manufacturer"
+                                      Label="Manufacturer"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="assetModel.Model"
+                                      Label="Model"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <!-- Financial Information -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Style="color:#00286E;margin:16px 0 8px 0;">
+                            Financial Information
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="decimal"
+                                      @bind-Value="assetModel.AcquisitionCost"
+                                      Label="Acquisition Cost"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentText="KES" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="acquisitionDate"
+                                       Label="Acquisition Date"
+                                       Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <!-- Allocation -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Style="color:#00286E;margin:16px 0 8px 0;">
+                            Allocation
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="assetModel.ResponsibleEmployee"
+                                      Label="Responsible Employee No"
+                                      Variant="Variant.Outlined"
+                                      HelperText="Employee number of person responsible" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="assetModel.DepartmentCode"
+                                   Label="Department"
+                                   Variant="Variant.Outlined">
+                            @foreach (var dept in departments)
+                            {
+                                <MudSelectItem T="string" Value="@dept">@dept</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="assetModel.Location"
+                                   Label="Location"
+                                   Variant="Variant.Outlined">
+                            @foreach (var location in locations)
+                            {
+                                <MudSelectItem T="string" Value="@location">@location</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Status & Condition -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Style="color:#00286E;margin:16px 0 8px 0;">
+                            Status & Condition
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudCheckBox T="bool" @bind-Checked="assetModel.Active"
+                                     Label="Active"
+                                     Color="Color.Primary" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string"
+                                   @bind-Value="assetModel.Condition"
+                                   Label="Condition"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem T="string" Value="@AssetCondition.EXCELLENT">Excellent</MudSelectItem>
+                            <MudSelectItem T="string" Value="@AssetCondition.GOOD">Good</MudSelectItem>
+                            <MudSelectItem T="string" Value="@AssetCondition.FAIR">Fair</MudSelectItem>
+                            <MudSelectItem T="string" Value="@AssetCondition.POOR">Poor</MudSelectItem>
+                            <MudSelectItem T="string" Value="@AssetCondition.DAMAGED">Damaged</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Remarks -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Style="color:#00286E;margin:16px 0 8px 0;">
+                            Additional Information
+                        </MudText>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="assetModel.Remarks"
+                                      Label="Remarks"
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      MultiLine="true" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Style="background-color: #D4A853; color: white;"
+                   OnClick="Save"
+                   Disabled="@(form?.IsValid == false)">
+            @(IsEditMode ? "Update Asset" : "Create Asset")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Components.CascadingValue<object>? CascadingDialog { get; set; }
+
+    [Parameter] public FixedAsset? Asset { get; set; }
+    [Parameter] public bool IsEditMode { get; set; } = false;
+    [Parameter] public EventCallback<FixedAsset> OnSave { get; set; }
+
+    private FixedAsset assetModel = new();
+    private MudForm? form;
+    private DateTime? acquisitionDate;
+    private List<string> assetClasses = new();
+    private List<string> locations = new();
+    private List<string> departments = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode && Asset != null)
+        {
+            // Create a copy of the asset for editing
+            assetModel = new FixedAsset
+            {
+                No = Asset.No,
+                Description = Asset.Description,
+                FixedAssetClassCode = Asset.FixedAssetClassCode,
+                TangibleIntangible = Asset.TangibleIntangible,
+                TagNo = Asset.TagNo,
+                SerialNo = Asset.SerialNo,
+                Manufacturer = Asset.Manufacturer,
+                Model = Asset.Model,
+                AcquisitionCost = Asset.AcquisitionCost,
+                ResponsibleEmployee = Asset.ResponsibleEmployee,
+                DepartmentCode = Asset.DepartmentCode,
+                Location = Asset.Location,
+                Active = Asset.Active,
+                Condition = Asset.Condition,
+                Remarks = Asset.Remarks,
+                ODataEtag = Asset.ODataEtag
+            };
+
+            if (!string.IsNullOrEmpty(Asset.AcqDate) && DateTime.TryParse(Asset.AcqDate, out var date))
+            {
+                acquisitionDate = date;
+            }
+        }
+
+        // Load dropdown data (in a real app, these would be injected)
+        assetClasses = new List<string>
+        {
+            FixedAssetClass.COMPUTER_EQUIPMENT,
+            FixedAssetClass.FURNITURE,
+            FixedAssetClass.VEHICLES,
+            FixedAssetClass.MACHINERY,
+            FixedAssetClass.BUILDINGS,
+            FixedAssetClass.LAND,
+            FixedAssetClass.SOFTWARE,
+            FixedAssetClass.LICENSES,
+            FixedAssetClass.OFFICE_EQUIPMENT,
+            FixedAssetClass.OTHER
+        };
+
+        locations = new List<string>
+        {
+            "Head Office",
+            "Branch Office - Nairobi",
+            "Branch Office - Mombasa",
+            "Branch Office - Kisumu",
+            "Warehouse",
+            "Training Center",
+            "Remote"
+        };
+
+        departments = new List<string>
+        {
+            "IT Department",
+            "Finance Department",
+            "HR Department",
+            "Operations",
+            "Quality Assurance",
+            "Administration",
+            "Marketing",
+            "Training"
+        };
+    }
+
+    private async Task Save()
+    {
+        if (form?.IsValid != true)
+            return;
+
+        try
+        {
+            // Set acquisition date
+            if (acquisitionDate.HasValue)
+            {
+                assetModel.AcqDate = acquisitionDate.Value.ToString("yyyy-MM-dd");
+            }
+
+            // Invoke save callback
+            await OnSave.InvokeAsync(assetModel);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving asset: {ex.Message}");
+        }
+    }
+
+    private void Cancel()
+    {
+    }
+}
+

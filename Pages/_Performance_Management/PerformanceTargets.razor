@@ -1,0 +1,1398 @@
+﻿@page "/performance-targets"
+@using KNQASelfService.Models
+@using KNQASelfService.Services
+@using MudBlazor
+@inject IPerformanceTargetService PerformanceTargetService
+@inject IEmployeeService EmployeeService
+@inject ICurrentUserService CurrentUserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Performance Target Setting</PageTitle>
+
+<MudLayout>
+    <!-- Drawer for Creating/Editing Targets -->
+    <MudDrawer @bind-Open="drawerOpen"
+               Anchor="Anchor.End"
+               Elevation="2"
+               Width="1000px"
+               Variant="@DrawerVariant.Temporary"
+               ClipMode="DrawerClipMode.Always">
+
+        <MudDrawerHeader Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%);">
+            <MudText Typo="Typo.h6" Style="color: white;">
+                <MudIcon Icon="@(isEditMode? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)"
+                         Style="color: #D4A853; margin-right: 8px;" />
+                @(isEditMode ? "Edit Performance Target" : "New Performance Target")
+            </MudText>
+        </MudDrawerHeader>
+
+        <MudDrawerContainer Style="padding: 20px; height: calc(100vh - 120px); overflow-y: auto;">
+            <MudForm @ref="form" @bind-IsValid="@formValid">
+                <MudGrid Spacing="3">
+                    <!-- Header Section -->
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle1" Style="color:#00286E;margin:0 0 8px 0;font-weight:600; padding-bottom: 8px; border-bottom: 2px solid #D4A853;">
+                            PERFORMANCE TARGET SETTING FORM
+                        </MudText>
+                    </MudItem>
+
+                    @if (isEditMode)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="formModel.ObjectiveNo"
+                                          Label="Objective No"
+                                          ReadOnly="true"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+
+                    <!-- Appraisal Information Section -->
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #00286E;">
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;">
+                                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" Style="margin-right: 8px;" />
+                                        APPRAISAL INFORMATION
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudSelect T="string"
+                                               @bind-Value="formModel.AppraisalCategory"
+                                               Label="Appraisal Category *"
+                                               Variant="Variant.Outlined"
+                                               Required="true">
+                                        <MudSelectItem T="string" Value="@null">Select Category</MudSelectItem>
+                                        @foreach (var category in appraisalCategories)
+                                        {
+                                            <MudSelectItem T="string" Value="@category.Code">
+                                                @category.Description
+                                            </MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudSelect T="string"
+                                               @bind-Value="formModel.AppraisalPeriod"
+                                               Label="Appraisal Period *"
+                                               Variant="Variant.Outlined"
+                                               Required="true">
+                                        <MudSelectItem T="string" Value="@null">Select Period</MudSelectItem>
+                                        @foreach (var period in appraisalPeriods)
+                                        {
+                                            <MudSelectItem T="string" Value="@period">@period</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudSelect T="string"
+                                               @bind-Value="formModel.AgreedPerformanceCategory"
+                                               Label="Agreed Performance Category *"
+                                               Variant="Variant.Outlined"
+                                               Required="true">
+                                        <MudSelectItem T="string" Value="@null">Select Category</MudSelectItem>
+                                        @foreach (var perfCategory in performanceCategories)
+                                        {
+                                            <MudSelectItem T="string" Value="@perfCategory.Code">
+                                                @perfCategory.Description
+                                            </MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Appraisee Details Section (Non-editable) -->
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;">
+                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Style="margin-right: 8px;" />
+                                        APPRAISEE DETAILS
+                                    </MudText>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.EmployeeNo"
+                                                  Label="Employee No"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.AppraiseeName"
+                                                  Label="Appraisee Name"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.AppraiseeID"
+                                                  Label="Appraisee ID"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.AppraiseeJobTitle"
+                                                  Label="Job Title"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.DepartmentCode"
+                                                  Label="Department Code"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.DepartmentName"
+                                                  Label="Department Name"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Appraiser Details Section -->
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #fff8e1; border-radius: 8px; border-left: 4px solid #ff9800;">
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;">
+                                        <MudIcon Icon="@Icons.Material.Filled.SupervisorAccount" Size="Size.Small" Style="margin-right: 8px;" />
+                                        APPRAISER DETAILS
+                                    </MudText>
+                                </MudItem>
+                               <MudItem xs="12" md="6">
+    <MudAutocomplete T="string"
+                     @bind-Value="selectedAppraiserNo"
+                     Label="Select Appraiser *"
+                     Variant="Variant.Outlined"
+                     Required="true"
+                     RequiredError="Appraiser is required"
+                     SearchFunc="@SearchAppraisers"
+                     ToStringFunc="@((string value) => GetAppraiserDisplayText(value))"
+                     OnValueChanged="@((string value) => OnAppraiserChanged(value))"
+                     Clearable="true"
+                     DebounceInterval="300">
+        <AdornmentIcon>@Icons.Material.Filled.PersonSearch</AdornmentIcon>
+        <NoItemsContent>
+            <div style="padding: 8px;">
+                <MudText>No appraisers found</MudText>
+                <MudText Typo="Typo.caption">Try searching by name, employee number, or email</MudText>
+            </div>
+        </NoItemsContent>
+    </MudAutocomplete>
+</MudItem>
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.AppraiserName"
+                                                  Label="Appraiser Name"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="formModel.AppraiserJobTitle"
+                                                  Label="Appraiser Job Title"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Performance Targets Section -->
+                    <MudItem xs="12">
+                        <MudPaper Elevation="1" Class="pa-3" Style="background-color: #f3e5f5; border-radius: 8px; border-left: 4px solid #9c27b0;">
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;">
+                                        <MudIcon Icon="@Icons.Material.Filled.TrackChanges" Size="Size.Small" Style="margin-right: 8px;" />
+                                        PERFORMANCE TARGETS
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color: #666;">
+                                        Total Weighting: @totalWeighting% (Must be 100%)
+                                    </MudText>
+                                </MudItem>
+
+                                <!-- Form for Adding New Target Line -->
+                                <MudItem xs="12">
+                                    <MudPaper Elevation="1" Class="pa-3 mb-3" Style="background-color: #fff; border: 2px solid #e0e0e0;">
+                                        <MudText Typo="Typo.subtitle2" Style="color:#00286E;font-weight:600;margin-bottom: 16px;">
+                                            <MudIcon Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" Style="margin-right: 8px;" />
+                                            Add New Target Line
+                                        </MudText>
+                                        
+                                        <MudGrid Spacing="2">
+                                            <MudItem xs="12">
+                                                <MudTextField @bind-Value="newTargetLine.KeyPerformanceArea"
+                                                              Label="Key Performance Area *"
+                                                              Variant="Variant.Outlined"
+                                                              Required="true"
+                                                              HelperText="e.g., Sales Performance, Customer Service"
+                                                              Immediate="true" />
+                                            </MudItem>
+                                            <MudItem xs="12" md="6">
+                                                <MudTextField @bind-Value="newTargetLine.KeyPerformanceIndicator"
+                                                              Label="Key Performance Indicator *"
+                                                              Variant="Variant.Outlined"
+                                                              Required="true"
+                                                              HelperText="e.g., Revenue Growth, Customer Satisfaction Score"
+                                                              Immediate="true" />
+                                            </MudItem>
+                                            <MudItem xs="12" md="6">
+                                                <MudTextField @bind-Value="newTargetLine.PerformanceMeasure"
+                                                              Label="Performance Measure *"
+                                                              Variant="Variant.Outlined"
+                                                              Required="true"
+                                                              HelperText="e.g., Percentage, Score, Number"
+                                                              Immediate="true" />
+                                            </MudItem>
+                                            <MudItem xs="12" md="6">
+                                                <MudTextField @bind-Value="newTargetLine.Target"
+                                                              Label="Target *"
+                                                              Variant="Variant.Outlined"
+                                                              Required="true"
+                                                              HelperText="e.g., 15%, 8.5 score, 100 units"
+                                                              Immediate="true" />
+                                            </MudItem>
+                                            <MudItem xs="12" md="6">
+                                                <MudNumericField T="decimal"
+                                                                 @bind-Value="newTargetLine.Weighting"
+                                                                 Label="Weighting % *"
+                                                                 Variant="Variant.Outlined"
+                                                                 Required="true"
+                                                                 Min="0"
+                                                                 Max="100"
+                                                                 Step="5"
+                                                                 HelperText="Enter percentage (0-100)"
+                                                                 Immediate="true" />
+                                            </MudItem>
+                                            <MudItem xs="12">
+                                                <MudTextField @bind-Value="newTargetLine.Timeline"
+                                                              Label="Timeline"
+                                                              Variant="Variant.Outlined"
+                                                              HelperText="e.g., Q4 2024, Monthly, By December"
+                                                              Immediate="true" />
+                                            </MudItem>
+                                            <MudItem xs="12">
+                                                <MudButton Variant="Variant.Filled"
+                                                           Style="background-color: #9c27b0; color: white;"
+                                                           StartIcon="@Icons.Material.Filled.Add"
+                                                           OnClick="AddTargetLine"
+                                                           FullWidth="true">
+                                                    Add Target Line
+                                                </MudButton>
+                                            </MudItem>
+                                        </MudGrid>
+                                    </MudPaper>
+                                </MudItem>
+
+                                <!-- Target Lines Table -->
+                                <MudItem xs="12">
+                                    @if (formModel.TargetLines != null && formModel.TargetLines.Any())
+                                    {
+                                        <MudTable Items="@formModel.TargetLines" Hover="true" Dense="true" Style="margin-top: 20px;">
+                                            <HeaderContent>
+                                                <MudTh>Key Performance Area</MudTh>
+                                                <MudTh>Key Performance Indicator</MudTh>
+                                                <MudTh>Performance Measure</MudTh>
+                                                <MudTh>Target</MudTh>
+                                                <MudTh>Weighting %</MudTh>
+                                                <MudTh>Timeline</MudTh>
+                                                <MudTh>Actions</MudTh>
+                                            </HeaderContent>
+                                            <RowTemplate Context="line">
+                                                <MudTd>
+                                                    <MudText Typo="Typo.body2">@line.KeyPerformanceArea</MudText>
+                                                </MudTd>
+                                                <MudTd>
+                                                    <MudText Typo="Typo.body2">@line.KeyPerformanceIndicator</MudText>
+                                                </MudTd>
+                                                <MudTd>
+                                                    <MudText Typo="Typo.body2">@line.PerformanceMeasure</MudText>
+                                                </MudTd>
+                                                <MudTd>
+                                                    <MudText Typo="Typo.body2">@line.Target</MudText>
+                                                </MudTd>
+                                                <MudTd>
+                                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@line.Weighting%</MudText>
+                                                </MudTd>
+                                                <MudTd>
+                                                    <MudText Typo="Typo.body2">@line.Timeline</MudText>
+                                                </MudTd>
+                                                <MudTd>
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                   Size="Size.Small"
+                                                                   Color="Color.Error"
+                                                                   OnClick="@(() => RemoveTargetLine(line))"
+                                                                   Title="Delete this target line" />
+                                                </MudTd>
+                                            </RowTemplate>
+                                        </MudTable>
+                                    }
+                                    else
+                                    {
+                                        <div style="text-align: center; padding: 40px; color: #666;">
+                                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Large" Style="color: #ccc; margin-bottom: 16px;" />
+                                            <MudText Typo="Typo.h6" Style="color: #666; margin-bottom: 8px;">No target lines added yet</MudText>
+                                            <MudText Typo="Typo.body2" Style="color: #999;">Fill in the form above to add your first performance target</MudText>
+                                        </div>
+                                    }
+                                </MudItem>
+
+                                <!-- Total Weighting Display -->
+                                @if (formModel.TargetLines != null && formModel.TargetLines.Any())
+                                {
+                                    <MudItem xs="12">
+                                        <div style="text-align: right; padding: 10px; border-radius: 4px;"
+                                             class="@(totalWeighting == 100 ? "bg-success-light" : "bg-error-light")">
+                                            <MudText Typo="Typo.body1"
+                                                     Class="@(totalWeighting == 100 ? "text-success" : "text-error")"
+                                                     Style="font-weight: 600;">
+                                                Total Weighting: @totalWeighting%
+                                                @if (totalWeighting == 100)
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="ms-2 text-success" />
+                                                }
+                                                else
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="ms-2 text-error" />
+                                                }
+                                            </MudText>
+                                            @if (totalWeighting != 100)
+                                            {
+                                                <MudText Typo="Typo.caption" Class="text-error">
+                                                    Total must be exactly 100% (Current: @totalWeighting%)
+                                                </MudText>
+                                            }
+                                        </div>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+
+                    <!-- Status and Remarks -->
+                    @if (isEditMode)
+                    {
+                        <MudItem xs="12">
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12" md="6">
+                                    <MudTextField @bind-Value="formModel.Status"
+                                                  Label="Status"
+                                                  Variant="Variant.Outlined"
+                                                  ReadOnly="true" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="formModel.Remarks"
+                                                  Label="Remarks"
+                                                  Variant="Variant.Outlined"
+                                                  Lines="2"
+                                                  MultiLine="true"
+                                                  HelperText="Optional: Add any additional comments" />
+                                </MudItem>
+                            </MudGrid>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudForm>
+        </MudDrawerContainer>
+
+        <div style="position: sticky; bottom: 0; background: white; border-top: 1px solid #e0e0e0; padding: 16px;">
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Style="width: 100%;">
+                <div>
+                    <MudButton Variant="Variant.Text" OnClick="CloseDrawer" Style="color: #666;">
+                        Cancel
+                    </MudButton>
+                    @if (isEditMode && formModel.Status == AppraisalStatus.DRAFT)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Style="border-color: #f57c00; color: #f57c00; margin-left: 8px;"
+                                   OnClick="@(() => SubmitForApproval())"
+                                   Disabled="@(!formValid || saving || totalWeighting != 100)">
+                            <MudIcon Icon="@Icons.Material.Filled.Send" Size="Size.Small" />
+                            <span class="ms-2">Submit for Approval</span>
+                        </MudButton>
+                    }
+                </div>
+                <div>
+                    <MudButton Variant="Variant.Filled"
+                               Style="background-color: #D4A853; color: white;"
+                               OnClick="@(() => SaveTarget())"
+                               Disabled="@(!formValid || saving || totalWeighting != 100)">
+                        @if (saving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                            <span class="ms-2">Saving...</span>
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Save" Size="Size.Small" />
+                            <span class="ms-2">@(isEditMode ? "Update" : "Save Draft")</span>
+                        }
+                    </MudButton>
+                </div>
+            </MudStack>
+        </div>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="mt-4">
+            <!-- Header Section -->
+            <MudPaper Elevation="0" Class="mb-4 pa-4" Style="background: linear-gradient(135deg, #00286E 0%, #003d8f 100%); border-radius: 12px;">
+                <MudGrid Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.h4" Style="color: white; font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.Assignment" Style="margin-right: 12px; vertical-align: middle;" />
+                            Performance Target Setting
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(currentEmployeeName))
+                        {
+                            <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.8);">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                @currentEmployeeName (@currentEmployeeNo)
+                            </MudText>
+                        }
+                    </MudItem>
+                    <MudItem xs="12" md="6" Style="text-align: right;">
+                        <MudButtonGroup Variant="Variant.Filled">
+                            <MudButton StartIcon="@Icons.Material.Filled.Add"
+                                       Style="background-color: #D4A853; color: white;"
+                                       OnClick="OpenCreateDrawer"
+                                       Disabled="@loading">
+                                New Performance Target
+                            </MudButton>
+                            @if (targets.Any())
+                            {
+                                <MudButton StartIcon="@Icons.Material.Filled.Download"
+                                           Style="background-color: #00286E; color: white;"
+                                           OnClick="ExportToExcel"
+                                           Disabled="@exporting">
+                                    @if (exporting)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="color: white;" />
+                                    }
+                                    else
+                                    {
+                                        <span>Export</span>
+                                    }
+                                </MudButton>
+                            }
+                        </MudButtonGroup>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Summary Cards -->
+            <MudGrid Spacing="3" Class="mb-4">
+                <MudItem xs="6" sm="3">
+                    <MudCard>
+                        <MudCardContent>
+                            <MudStack Spacing="3">
+                                <MudText Typo="Typo.body2" Style="color: #666;">Total Targets</MudText>
+                                <MudText Typo="Typo.h4" Style="color: #00286E; font-weight: 600;">@summary.TotalTargets</MudText>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudCard>
+                        <MudCardContent>
+                            <MudStack Spacing="3">
+                                <MudText Typo="Typo.body2" Style="color: #666;">My Drafts</MudText>
+                                <MudText Typo="Typo.h4" Style="color: #ff9800; font-weight: 600;">@summary.MyDraftTargets</MudText>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudCard>
+                        <MudCardContent>
+                            <MudStack Spacing="3">
+                                <MudText Typo="Typo.body2" Style="color: #666;">Pending Approval</MudText>
+                                <MudText Typo="Typo.h4" Style="color: #1976d2; font-weight: 600;">@summary.PendingApproval</MudText>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudCard>
+                        <MudCardContent>
+                            <MudStack Spacing="3">
+                                <MudText Typo="Typo.body2" Style="color: #666;">Approved</MudText>
+                                <MudText Typo="Typo.h4" Style="color: #4caf50; font-weight: 600;">@summary.ApprovedTargets</MudText>
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            </MudGrid>
+
+            <!-- Search and Filter Section -->
+            <MudPaper Elevation="1" Class="mb-4 pa-4">
+                <MudGrid Spacing="3" AlignItems="AlignItems.Center">
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="searchTerm"
+                                      Label="Search targets..."
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      Immediate="true" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="string"
+                                   @bind-Value="filter.Status"
+                                   Label="Filter by Status"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem T="string" Value="@null">All Status</MudSelectItem>
+                            @foreach (var status in appraisalStatusList)
+                            {
+                                <MudSelectItem T="string" Value="@status">@status</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="string"
+                                   @bind-Value="filter.Period"
+                                   Label="Filter by Period"
+                                   Variant="Variant.Outlined">
+                            <MudSelectItem T="string" Value="@null">All Periods</MudSelectItem>
+                            @foreach (var period in appraisalPeriods)
+                            {
+                                <MudSelectItem T="string" Value="@period">@period</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- Loading State -->
+            @if (loading)
+            {
+                <MudPaper Elevation="1" Class="pa-8" Style="text-align: center;">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+                    <MudText Typo="Typo.h6" Class="mt-4" Style="color: #00286E;">Loading performance targets...</MudText>
+                </MudPaper>
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4">
+                    <MudAlertTitle>Error</MudAlertTitle>
+                    @errorMessage
+                </MudAlert>
+            }
+            else if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Filled" Class="mb-4">
+                    <MudAlertTitle>Success</MudAlertTitle>
+                    @successMessage
+                </MudAlert>
+            }
+
+            <!-- Performance Targets Table -->
+            @if (targets.Any())
+            {
+                <MudPaper Elevation="2">
+                    <MudTable Items="@FilteredTargets" Hover="true" Dense="true">
+                        <HeaderContent>
+                            <MudTh>Objective No</MudTh>
+                            <MudTh>Appraisal Category</MudTh>
+                            <MudTh>Period</MudTh>
+                            <MudTh>Performance Category</MudTh>
+                            <MudTh>Appraiser</MudTh>
+                            <MudTh>Created Date</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Actions</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="target">
+                            <MudTd>@target.ObjectiveNo</MudTd>
+                            <MudTd>@GetCategoryChip(target.AppraisalCategory)</MudTd>
+                            <MudTd>@target.AppraisalPeriod</MudTd>
+                            <MudTd>@target.AgreedPerformanceCategory</MudTd>
+                            <MudTd>@target.AppraiserName</MudTd>
+                            <MudTd>@target.CreatedDate?.ToString("dd/MM/yyyy")</MudTd>
+                            <MudTd>@GetStatusChip(target.Status)</MudTd>
+                            <MudTd>
+                                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => ViewTarget(target))"
+                                               Title="View Details" />
+                                @if (target.Status == AppraisalStatus.DRAFT)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Size="Size.Small"
+                                                   Color="Color.Warning"
+                                                   OnClick="@(() => OpenEditDrawer(target))"
+                                                   Class="ml-1"
+                                                   Title="Edit" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => ConfirmDelete(target))"
+                                                   Class="ml-1"
+                                                   Title="Delete" />
+                                }
+                            </MudTd>
+                        </RowTemplate>
+                        <PagerContent>
+                            <MudTablePager PageSizeOptions="@(new int[] {10, 25, 50})" />
+                        </PagerContent>
+                    </MudTable>
+                </MudPaper>
+            }
+            else if (!loading)
+            {
+                <MudPaper Elevation="1" Class="pa-8" Style="text-align: center;">
+                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Large" Style="color: #ccc; margin-bottom: 16px;" />
+                    <MudText Typo="Typo.h6" Style="color: #666; margin-bottom: 8px;">No performance targets found</MudText>
+                    <MudText Typo="Typo.body2" Style="color: #999;">Click "New Performance Target" to create your first performance target</MudText>
+                </MudPaper>
+            }
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool loading = false;
+    private bool searching = false;
+    private bool exporting = false;
+    private bool saving = false;
+    private bool drawerOpen = false;
+    private bool isEditMode = false;
+
+    private string currentEmployeeNo = string.Empty;
+    private string currentEmployeeName = string.Empty;
+    private string? errorMessage;
+    private string? successMessage;
+    private string searchTerm = string.Empty;
+
+    private List<PerformanceTarget> targets = new();
+    private PerformanceTargetSummary summary = new();
+    private PerformanceTargetFilter filter = new();
+    private List<AppraisalCategory> appraisalCategories = new();
+    private List<PerformanceCategory> performanceCategories = new();
+    private List<string> appraisalPeriods = new();
+    private List<string> appraisalStatusList = new();
+    private List<Employee> potentialAppraisers = new();
+
+    // Drawer variables
+    private MudForm form;
+    private bool formValid;
+    private PerformanceTarget formModel = new();
+    private PerformanceTarget? editingTarget = null;
+    private string selectedAppraiserNo = string.Empty;
+    private TargetLine newTargetLine = new(); // Changed from currentLine to newTargetLine for clarity
+    private decimal totalWeighting = 0;
+
+    private List<PerformanceTarget> FilteredTargets => GetFilteredTargets();
+
+    private List<PerformanceTarget> GetFilteredTargets()
+    {
+        var query = targets.AsQueryable();
+
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            var searchTermLower = searchTerm.ToLower();
+            query = query.Where(t =>
+                (t.ObjectiveNo != null && t.ObjectiveNo.ToLower().Contains(searchTermLower)) ||
+                (t.AppraisalCategory != null && t.AppraisalCategory.ToLower().Contains(searchTermLower)) ||
+                (t.AppraiserName != null && t.AppraiserName.ToLower().Contains(searchTermLower)) ||
+                (t.AgreedPerformanceCategory != null && t.AgreedPerformanceCategory.ToLower().Contains(searchTermLower)));
+        }
+
+        if (!string.IsNullOrEmpty(filter.Status))
+        {
+            query = query.Where(t => t.Status == filter.Status);
+        }
+
+        if (!string.IsNullOrEmpty(filter.Period))
+        {
+            query = query.Where(t => t.AppraisalPeriod == filter.Period);
+        }
+
+        return query.OrderByDescending(t => t.CreatedDate).ToList();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            currentEmployeeNo = await CurrentUserService.GetEmployeeNoAsync();
+            currentEmployeeName = await CurrentUserService.GetEmployeeNameAsync();
+
+            if (string.IsNullOrEmpty(currentEmployeeNo))
+            {
+                errorMessage = "Employee number not found. Please log in again.";
+                return;
+            }
+
+            Console.WriteLine($"🔍 Current User - Name: {currentEmployeeName}, EmployeeNo: {currentEmployeeNo}");
+
+            loading = true;
+            StateHasChanged();
+
+            await LoadMasterData();
+            await LoadTargetsFromAPI();
+            await LoadSummary();
+            await LoadPotentialAppraisers();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error initializing page: {ex.Message}";
+            Console.WriteLine($"❌ Error in OnInitializedAsync: {ex}");
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadMasterData()
+    {
+        try
+        {
+            // Load master data from services
+            appraisalCategories = await PerformanceTargetService.GetAppraisalCategoriesAsync();
+            performanceCategories = await PerformanceTargetService.GetPerformanceCategoriesAsync();
+            appraisalPeriods = await PerformanceTargetService.GetAppraisalPeriodsAsync();
+            
+            // Initialize status list
+            appraisalStatusList = new List<string>
+            {
+                AppraisalStatus.DRAFT,
+                AppraisalStatus.PENDING_APPROVAL,
+                AppraisalStatus.APPROVED,
+                AppraisalStatus.REJECTED,
+                AppraisalStatus.UNDER_REVIEW
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading master data: {ex}");
+        }
+    }
+
+    private async Task LoadPotentialAppraisers()
+    {
+        try
+        {
+            // Load potential appraisers (managers/supervisors)
+            potentialAppraisers = await EmployeeService.GetPotentialAppraisersAsync();
+            Console.WriteLine($"✅ Loaded {potentialAppraisers.Count} potential appraisers");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading potential appraisers: {ex}");
+            potentialAppraisers = new List<Employee>();
+        }
+    }
+
+    private async Task LoadTargetsFromAPI()
+    {
+        try
+        {
+            Console.WriteLine("🔍 Loading performance targets from Business Central API...");
+
+            // Load targets from Business Central API
+            targets = await PerformanceTargetService.GetPerformanceTargetsByEmployeeAsync(currentEmployeeNo);
+
+            if (targets == null || !targets.Any())
+            {
+                Console.WriteLine("ℹ️ No performance targets found in Business Central");
+                successMessage = "No performance targets found. You can create a new one.";
+            }
+            else
+            {
+                Console.WriteLine($"✅ Loaded {targets.Count} performance targets from Business Central");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load performance targets from Business Central: {ex.Message}";
+            Console.WriteLine($"❌ Error loading targets from API: {ex}");
+            targets = new List<PerformanceTarget>();
+        }
+    }
+
+    private async Task LoadSummary()
+    {
+        try
+        {
+            // Calculate summary from real data
+            summary = new PerformanceTargetSummary
+            {
+                TotalTargets = targets.Count,
+                DraftTargets = targets.Count(t => t.Status == AppraisalStatus.DRAFT),
+                PendingApproval = targets.Count(t => t.Status == AppraisalStatus.PENDING_APPROVAL),
+                ApprovedTargets = targets.Count(t => t.Status == AppraisalStatus.APPROVED),
+                RejectedTargets = targets.Count(t => t.Status == AppraisalStatus.REJECTED),
+                MyDraftTargets = targets.Count(t => t.EmployeeNo == currentEmployeeNo && t.Status == AppraisalStatus.DRAFT)
+            };
+
+            Console.WriteLine($"🔍 Summary - Total: {summary.TotalTargets}, Draft: {summary.DraftTargets}, Pending: {summary.PendingApproval}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error loading summary: {ex}");
+        }
+    }
+
+    private Task<IEnumerable<string>> SearchAppraisers(string value, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (potentialAppraisers == null || !potentialAppraisers.Any())
+                return Task.FromResult(Enumerable.Empty<string>());
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return Task.FromResult(potentialAppraisers
+                    .Select(a => a.No)
+                    .Where(no => !string.IsNullOrEmpty(no))
+                    .Take(10)
+                    .AsEnumerable());
+            }
+
+            var searchTerm = value.Trim().ToLower();
+            return Task.FromResult(potentialAppraisers
+                .Where(a => 
+                    (!string.IsNullOrEmpty(a.FullName) && a.FullName.ToLower().Contains(searchTerm)) ||
+                    (!string.IsNullOrEmpty(a.No) && a.No.ToLower().Contains(searchTerm)) ||
+                    (!string.IsNullOrEmpty(a.Email) && a.Email.ToLower().Contains(searchTerm)))
+                .Select(a => a.No)
+                .Where(no => !string.IsNullOrEmpty(no))
+                .Take(10)
+                .AsEnumerable());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error searching appraisers: {ex.Message}");
+            return Task.FromResult(Enumerable.Empty<string>());
+        }
+    }
+
+    private string GetAppraiserDisplayText(string appraiserNo)
+    {
+        if (string.IsNullOrEmpty(appraiserNo))
+            return string.Empty;
+
+        var appraiser = potentialAppraisers?.FirstOrDefault(a => a.No == appraiserNo);
+        return appraiser != null ? $"{appraiser.FullName} ({appraiser.No})" : appraiserNo;
+    }
+
+    private async Task OnAppraiserChanged(string value)
+    {
+        selectedAppraiserNo = value;
+
+        if (!string.IsNullOrEmpty(value))
+        {
+            var appraiser = potentialAppraisers?.FirstOrDefault(a => a.No == value);
+            if (appraiser != null)
+            {
+                formModel.AppraiserNo = appraiser.No;
+                formModel.AppraiserName = appraiser.FullName;
+                formModel.AppraiserJobTitle = appraiser.JobTitle;
+            }
+            else
+            {
+                // Try to load appraiser from service
+                var loadedAppraiser = await EmployeeService.GetEmployeeAsync(value);
+                if (loadedAppraiser != null)
+                {
+                    formModel.AppraiserNo = loadedAppraiser.No;
+                    formModel.AppraiserName = loadedAppraiser.FullName;
+                    formModel.AppraiserJobTitle = loadedAppraiser.JobTitle;
+                }
+                else
+                {
+                    formModel.AppraiserNo = null;
+                    formModel.AppraiserName = null;
+                    formModel.AppraiserJobTitle = null;
+                }
+            }
+        }
+        else
+        {
+            formModel.AppraiserNo = null;
+            formModel.AppraiserName = null;
+            formModel.AppraiserJobTitle = null;
+        }
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void AddTargetLine()
+    {
+        try
+        {
+            // Validate the new target line
+            if (string.IsNullOrWhiteSpace(newTargetLine.KeyPerformanceArea))
+            {
+                Snackbar.Add("Please enter a Key Performance Area", Severity.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(newTargetLine.KeyPerformanceIndicator))
+            {
+                Snackbar.Add("Please enter a Key Performance Indicator", Severity.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(newTargetLine.PerformanceMeasure))
+            {
+                Snackbar.Add("Please enter a Performance Measure", Severity.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(newTargetLine.Target))
+            {
+                Snackbar.Add("Please enter a Target", Severity.Warning);
+                return;
+            }
+
+            if (newTargetLine.Weighting <= 0)
+            {
+                Snackbar.Add("Please enter a valid Weighting (greater than 0)", Severity.Warning);
+                return;
+            }
+
+            // Create new target line
+            var line = new TargetLine
+            {
+                LineNo = formModel.TargetLines.Count + 1,
+                KeyPerformanceArea = newTargetLine.KeyPerformanceArea.Trim(),
+                KeyPerformanceIndicator = newTargetLine.KeyPerformanceIndicator.Trim(),
+                PerformanceMeasure = newTargetLine.PerformanceMeasure.Trim(),
+                Target = newTargetLine.Target.Trim(),
+                Weighting = newTargetLine.Weighting,
+                Timeline = newTargetLine.Timeline?.Trim(),
+                ResourcesRequired = newTargetLine.ResourcesRequired?.Trim(),
+                SuccessCriteria = newTargetLine.SuccessCriteria?.Trim(),
+                Remarks = newTargetLine.Remarks?.Trim()
+            };
+
+            // Add to the form model
+            formModel.TargetLines.Add(line);
+            
+            // Update total weighting
+            CalculateTotalWeighting();
+            
+            // Clear the form for next entry
+            newTargetLine = new TargetLine();
+            
+            // Show success message
+            Snackbar.Add($"Target line added: {line.KeyPerformanceArea}", Severity.Success);
+            
+            // Update UI
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding target line: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void RemoveTargetLine(TargetLine line)
+    {
+        try
+        {
+            formModel.TargetLines.Remove(line);
+
+            // Re-number the lines
+            for (int i = 0; i < formModel.TargetLines.Count; i++)
+            {
+                formModel.TargetLines[i].LineNo = i + 1;
+            }
+
+            CalculateTotalWeighting();
+            
+            Snackbar.Add($"Target line removed: {line.KeyPerformanceArea}", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error removing target line: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CalculateTotalWeighting()
+    {
+        totalWeighting = formModel.TargetLines.Sum(t => t.Weighting);
+        StateHasChanged();
+    }
+
+    private async Task SaveTarget()
+    {
+        try
+        {
+            // Validate form
+            await form.Validate();
+
+            if (!form.IsValid)
+            {
+                Snackbar.Add("Please fill in all required fields correctly", Severity.Error);
+                return;
+            }
+
+            if (formModel.TargetLines.Count == 0)
+            {
+                Snackbar.Add("Please add at least one performance target", Severity.Error);
+                return;
+            }
+
+            if (totalWeighting != 100)
+            {
+                Snackbar.Add($"Total weighting must be 100%. Current total is {totalWeighting}%", Severity.Error);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.AppraiserNo))
+            {
+                Snackbar.Add("Please select an appraiser", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            string result;
+            if (isEditMode && editingTarget != null)
+            {
+                result = await PerformanceTargetService.UpdatePerformanceTargetAsync(formModel);
+            }
+            else
+            {
+                result = await PerformanceTargetService.CreatePerformanceTargetAsync(formModel);
+            }
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add(isEditMode ? "Performance target updated successfully!" : "Performance target saved as draft!", Severity.Success);
+                CloseDrawer();
+                await LoadTargetsFromAPI();
+                await LoadSummary();
+            }
+            else
+            {
+                Snackbar.Add(result, Severity.Error, config => { config.VisibleStateDuration = 8000; });
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving target: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SubmitForApproval()
+    {
+        try
+        {
+            if (totalWeighting != 100)
+            {
+                Snackbar.Add($"Total weighting must be 100% before submission. Current total is {totalWeighting}%", Severity.Error);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(formModel.AppraiserNo))
+            {
+                Snackbar.Add("Please select an appraiser before submission", Severity.Error);
+                return;
+            }
+
+            saving = true;
+            StateHasChanged();
+
+            var result = await PerformanceTargetService.SubmitForApprovalAsync(formModel.ObjectiveNo!);
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add("Performance target submitted for approval successfully!", Severity.Success);
+                CloseDrawer();
+                await LoadTargetsFromAPI();
+                await LoadSummary();
+            }
+            else
+            {
+                Snackbar.Add(result, Severity.Error, config => { config.VisibleStateDuration = 8000; });
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error submitting for approval: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OpenCreateDrawer()
+    {
+        try
+        {
+            isEditMode = false;
+            editingTarget = null;
+            formModel = new PerformanceTarget
+            {
+                EmployeeNo = currentEmployeeNo,
+                AppraiseeName = currentEmployeeName,
+                Status = AppraisalStatus.DRAFT,
+                AppraisalPeriod = appraisalPeriods.FirstOrDefault() ?? "2024/2025",
+                TargetLines = new List<TargetLine>(),
+                CreatedDate = DateTime.Now
+            };
+
+            selectedAppraiserNo = string.Empty;
+            newTargetLine = new TargetLine();
+            totalWeighting = 0;
+            formValid = false;
+
+            // Load employee details asynchronously
+            _ = LoadEmployeeDetails();
+
+            drawerOpen = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error opening create drawer: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadEmployeeDetails()
+    {
+        try
+        {
+            var employee = await EmployeeService.GetEmployeeAsync(currentEmployeeNo);
+            if (employee != null)
+            {
+                formModel.AppraiseeID = employee.Email;
+                formModel.AppraiseeJobTitle = employee.JobTitle ?? "Employee";
+                formModel.DepartmentCode = employee.DepartmentCode ?? "Not Specified";
+                formModel.DepartmentName = employee.DepartmentCode ?? "Not Specified";
+                formModel.AppraiseeJobID = employee.No;
+
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️ Error loading employee details: {ex.Message}");
+        }
+    }
+
+    private async Task OpenEditDrawer(PerformanceTarget target)
+    {
+        try
+        {
+            var currentTarget = await PerformanceTargetService.GetPerformanceTargetAsync(target.ObjectiveNo!);
+
+            if (currentTarget == null)
+            {
+                Snackbar.Add("Could not load target details", Severity.Error);
+                return;
+            }
+
+            isEditMode = true;
+            editingTarget = currentTarget;
+            formModel = new PerformanceTarget
+            {
+                ObjectiveNo = currentTarget.ObjectiveNo,
+                EmployeeNo = currentTarget.EmployeeNo,
+                AppraiseeName = currentTarget.AppraiseeName,
+                AppraiseeID = currentTarget.AppraiseeID,
+                AppraiseeJobID = currentTarget.AppraiseeJobID,
+                AppraiseeJobTitle = currentTarget.AppraiseeJobTitle,
+                DepartmentCode = currentTarget.DepartmentCode,
+                DepartmentName = currentTarget.DepartmentName,
+                AppraiserNo = currentTarget.AppraiserNo,
+                AppraiserName = currentTarget.AppraiserName,
+                AppraiserJobTitle = currentTarget.AppraiserJobTitle,
+                Status = currentTarget.Status,
+                AppraisalCategory = currentTarget.AppraisalCategory,
+                AppraisalPeriod = currentTarget.AppraisalPeriod,
+                AgreedPerformanceCategory = currentTarget.AgreedPerformanceCategory,
+                Approved = currentTarget.Approved,
+                CreatedDate = currentTarget.CreatedDate,
+                SubmittedDate = currentTarget.SubmittedDate,
+                ApprovedDate = currentTarget.ApprovedDate,
+                Remarks = currentTarget.Remarks,
+                TargetLines = currentTarget.TargetLines ?? new List<TargetLine>(),
+                ODataEtag = currentTarget.ODataEtag
+            };
+
+            selectedAppraiserNo = currentTarget.AppraiserNo ?? string.Empty;
+            totalWeighting = formModel.TargetLines.Sum(t => t.Weighting);
+            formValid = true;
+            newTargetLine = new TargetLine();
+
+            drawerOpen = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load target for editing: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ViewTarget(PerformanceTarget target)
+    {
+        try
+        {
+            var currentTarget = await PerformanceTargetService.GetPerformanceTargetAsync(target.ObjectiveNo!);
+
+            if (currentTarget != null)
+            {
+                var parameters = new DialogParameters<PerformanceTargetViewDialog>
+                {
+                    { x => x.Target, currentTarget }
+                };
+
+                var options = new DialogOptions 
+                { 
+                    MaxWidth = MaxWidth.Large, 
+                    FullWidth = true,
+                    CloseButton = true,
+                };
+                
+                var dialog = await DialogService.ShowAsync<PerformanceTargetViewDialog>("View Performance Target", parameters, options);
+                var result = await dialog.Result;
+                
+                // Handle the result if user clicked "Edit Target"
+                if (!result.Canceled && result.Data != null)
+                {
+                    if (result.Data.ToString() == "edit")
+                    {
+                        await OpenEditDrawer(currentTarget);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error viewing target: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void CloseDrawer()
+    {
+        drawerOpen = false;
+        formModel = new PerformanceTarget();
+        editingTarget = null;
+        selectedAppraiserNo = string.Empty;
+        newTargetLine = new TargetLine();
+        totalWeighting = 0;
+    }
+
+    private async Task ConfirmDelete(PerformanceTarget target)
+    {
+        try
+        {
+            var confirmed = await DialogService.ShowMessageBox(
+                "Delete Performance Target",
+                $"Are you sure you want to delete performance target '{target.ObjectiveNo}'? This action cannot be undone.",
+                yesText: "Delete",
+                cancelText: "Cancel",
+                options: new DialogOptions
+                {
+                    MaxWidth = MaxWidth.Small,
+                    CloseButton = true
+                });
+
+            if (confirmed == true)
+            {
+                await DeleteTarget(target);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteTarget(PerformanceTarget target)
+    {
+        try
+        {
+            var result = await PerformanceTargetService.DeletePerformanceTargetAsync(target.ObjectiveNo!);
+
+            if (result.StartsWith("Success"))
+            {
+                Snackbar.Add($"Performance target {target.ObjectiveNo} deleted successfully", Severity.Success);
+                await LoadTargetsFromAPI();
+                await LoadSummary();
+            }
+            else
+            {
+                Snackbar.Add(result, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting target: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ExportToExcel()
+    {
+        try
+        {
+            exporting = true;
+            StateHasChanged();
+
+            // Implement actual export logic here
+            await Task.Delay(500); // Simulate export
+
+            var filteredCount = FilteredTargets.Count;
+            Snackbar.Add($"Exported {filteredCount} performance targets to Excel", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error exporting to Excel: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            exporting = false;
+            StateHasChanged();
+        }
+    }
+
+    // UI Helper Methods
+    private RenderFragment GetCategoryChip(string? category)
+    {
+        var (colorStyle, text) = category switch
+        {
+            "TARGETSET" => ("background-color: #1976d2; color: white;", "Target Setting"),
+            "MIDYEAR" => ("background-color: #ff9800; color: white;", "Mid-Year"),
+            "ANNUAL" => ("background-color: #4caf50; color: white;", "Annual"),
+            "PROBATION" => ("background-color: #9c27b0; color: white;", "Probation"),
+            "PROMOTION" => ("background-color: #f44336; color: white;", "Promotion"),
+            _ => ("background-color: #999; color: white;", category ?? "Unknown")
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle">@text</MudChip>;
+    }
+
+    private RenderFragment GetStatusChip(string? status)
+    {
+        var (colorStyle, icon, text) = status switch
+        {
+            AppraisalStatus.DRAFT => ("background-color: #ff9800; color: white;", Icons.Material.Filled.Edit, "Draft"),
+            AppraisalStatus.PENDING_APPROVAL => ("background-color: #1976d2; color: white;", Icons.Material.Filled.Pending, "Pending"),
+            AppraisalStatus.APPROVED => ("background-color: #4caf50; color: white;", Icons.Material.Filled.CheckCircle, "Approved"),
+            AppraisalStatus.REJECTED => ("background-color: #f44336; color: white;", Icons.Material.Filled.Cancel, "Rejected"),
+            AppraisalStatus.UNDER_REVIEW => ("background-color: #9c27b0; color: white;", Icons.Material.Filled.Reviews, "Review"),
+            _ => ("background-color: #999; color: white;", Icons.Material.Filled.Help, status ?? "Unknown")
+        };
+
+        return @<MudChip T="string" Size="Size.Small" Style="@colorStyle" Icon="@icon">@text</MudChip>;
+    }
+}

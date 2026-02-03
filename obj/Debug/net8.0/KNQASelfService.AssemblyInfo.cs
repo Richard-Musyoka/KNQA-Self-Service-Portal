@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KNQASelfService")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5e8f1bb866fd482bb77f84bb22d5a421fb78ffcc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+774a5874cac1b8851be8e06be0d053c03951d37c")]
 [assembly: System.Reflection.AssemblyProductAttribute("KNQASelfService")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KNQASelfService")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

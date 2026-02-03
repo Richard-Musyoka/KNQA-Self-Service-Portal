@@ -32,6 +32,11 @@ builder.Services.AddScoped<IHelpDeskService, HelpDeskService>();
 // Add to Program.cs or equivalent
 builder.Services.AddScoped<IJobRequisitionService, JobRequisitionService>();
 builder.Services.AddScoped<IRoomBookingService, RoomBookingService>();
+builder.Services.AddScoped<IFixedAssetService, FixedAssetService>();
+builder.Services.AddScoped<IAssetRepairService, AssetRepairService>();
+builder.Services.AddScoped<IPerformanceTargetService, PerformanceTargetService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<IAppraisalService, AppraisalService>();
 builder.Services.AddScoped<IVehicleMaintenanceService, VehicleMaintenanceService>();
 builder.Services.AddScoped<ITrainingRequestService, TrainingRequestService>();
 builder.Services.AddScoped<ITrainingEvaluationService, TrainingEvaluationService>();
